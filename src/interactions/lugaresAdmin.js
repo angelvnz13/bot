@@ -129,7 +129,7 @@ export async function replyLugaresAdmin(interaction) {
   await interaction.reply({
     embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -178,7 +178,7 @@ export async function handleLugaresSelect(interaction, action) {
   const id = Number(interaction.values[0]);
   const bg = getBattleGround(id);
   if (!bg) {
-    return interaction.reply({ content: "❌ Lugar no encontrado.", ephemeral: true });
+    return interaction.reply({ content: "❌ Lugar no encontrado.", flags: 64 });
   }
 
   if (action === "edit") {
@@ -217,14 +217,14 @@ export async function handleLugaresModalCreate(interaction) {
   try {
     createBattleGround({ name, coordsDef: def, coordsAtk: atk, info });
   } catch (e) {
-    return interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
+    return interaction.reply({ content: `❌ ${e.message}`, flags: 64 });
   }
   audit("lugar.create", { userId: interaction.user.id, guildId: interaction.guild?.id, name, info, coords_def: def, coords_atk: atk });
   await interaction.update?.({
     embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
   }).catch(async () => {
-    await interaction.reply({ content: `✅ Lugar creado: **${name}**`, ephemeral: true });
+    await interaction.reply({ content: `✅ Lugar creado: **${name}**`, flags: 64 });
   });
 }
 
@@ -236,13 +236,13 @@ export async function handleLugaresModalEdit(interaction, id) {
   try {
     updateBattleGround(Number(id), { name, coordsDef: def, coordsAtk: atk, info });
   } catch (e) {
-    return interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
+    return interaction.reply({ content: `❌ ${e.message}`, flags: 64 });
   }
   audit("lugar.update", { userId: interaction.user.id, guildId: interaction.guild?.id, id, name, info, coords_def: def, coords_atk: atk });
   await interaction.update?.({
     embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
   }).catch(async () => {
-    await interaction.reply({ content: `✅ Lugar actualizado: **${name}**`, ephemeral: true });
+    await interaction.reply({ content: `✅ Lugar actualizado: **${name}**`, flags: 64 });
   });
 }

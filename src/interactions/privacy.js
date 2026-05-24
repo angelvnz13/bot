@@ -37,5 +37,5 @@ export async function replyForgetMe(interaction) {
       "Los embeds publicados que ya están en canales de Discord no son borrados automáticamente. Si quieres que un mensaje específico se elimine, contacta con un administrador del servidor."
     );
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed], flags: 64 });
 }

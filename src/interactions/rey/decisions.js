@@ -22,17 +22,17 @@ import { refreshPanel } from "./refresh.js";
 async function abrirSelectorPrivado(interaction, panelId, action) {
   const state = reyes.get(panelId);
   if (!state) {
-    return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
+    return interaction.reply({ content: "⚠️ Este evento ya no está activo.", flags: 64 });
   }
   const ref = findLeon(state, interaction.user.id);
   if (!ref) {
     return interaction.reply({
       content: "🚫 No tienes sedes asignadas en este evento.",
-      ephemeral: true,
+      flags: 64,
     });
   }
   if (!ref.leon.sedes.length) {
-    return interaction.reply({ content: "ℹ️ No tienes sedes asignadas.", ephemeral: true });
+    return interaction.reply({ content: "ℹ️ No tienes sedes asignadas.", flags: 64 });
   }
 
   const titulo = action === "iran"
@@ -44,7 +44,7 @@ async function abrirSelectorPrivado(interaction, panelId, action) {
   await interaction.reply({
     content: `${titulo}\nElige una de tus sedes:`,
     components: [rowSelectorPrivado(panelId, ref.leon, action)],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -109,11 +109,11 @@ export async function applySelection(interaction, action, panelId) {
 // customId: rey:modal:noiran:<panelId>:<sedeIdx>
 export async function modalNoIran(interaction, panelId, sedeIdx) {
   const state = reyes.get(panelId);
-  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
+  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", flags: 64 });
   const ref = findLeon(state, interaction.user.id);
-  if (!ref) return interaction.reply({ content: "🚫 No tienes sedes asignadas.", ephemeral: true });
+  if (!ref) return interaction.reply({ content: "🚫 No tienes sedes asignadas.", flags: 64 });
   const item = ref.leon.sedes[Number(sedeIdx)];
-  if (!item) return interaction.reply({ content: "⚠️ Sede no encontrada.", ephemeral: true });
+  if (!item) return interaction.reply({ content: "⚠️ Sede no encontrada.", flags: 64 });
 
   const razon = interaction.fields.getTextInputValue("razon").trim().slice(0, 300);
   item.status = STATUS_NO_IRAN;
@@ -128,7 +128,7 @@ export async function modalNoIran(interaction, panelId, sedeIdx) {
 
   await interaction.reply({
     content: `🚫 **${item.sede.name}** marcada como **No iran**.\n📝 Razón: ${razon}`,
-    ephemeral: true,
+    flags: 64,
   });
   await refreshPanel(interaction.client, state);
 }

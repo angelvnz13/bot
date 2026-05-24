@@ -35,7 +35,7 @@ import { PREP_TIME_MS } from "../config.js";
 function noState(interaction) {
   return interaction.reply({
     content: "⚠️ Este asalto ya no está activo.",
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -151,7 +151,7 @@ export async function rondaUndo(interaction, messageId) {
   const state = getAsalto(messageId);
   if (!state) return noState(interaction);
   if (!state.history.length) {
-    await interaction.reply({ content: "⚠️ No hay rondas previas para deshacer.", ephemeral: true });
+    await interaction.reply({ content: "⚠️ No hay rondas previas para deshacer.", flags: 64 });
     return;
   }
   const last = state.history.pop();

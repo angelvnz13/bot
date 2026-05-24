@@ -43,5 +43,5 @@ export async function replyHealth(interaction) {
       { name: "Tiempos", value: timings.slice(0, 1024) },
     );
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed], flags: 64 });
 }

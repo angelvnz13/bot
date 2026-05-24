@@ -55,7 +55,7 @@ function applyRateLimit(interaction) {
     if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
       interaction.reply({
         content: `⏱️ Vas muy rápido. Intenta de nuevo en ${result.retryAfterSec}s.`,
-        ephemeral: true,
+        flags: 64,
       }).catch(() => {});
     }
     inc("ratelimit.blocked");
@@ -75,7 +75,7 @@ export async function handleInteraction(interaction) {
       inc("interaction.error");
       if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
         await interaction
-          .reply({ content: `❌ Error inesperado: \`${err?.message ?? err}\``, ephemeral: true })
+          .reply({ content: `❌ Error inesperado: \`${err?.message ?? err}\``, flags: 64 })
           .catch(() => {});
       }
     }
@@ -105,7 +105,7 @@ async function routeInteraction(interaction) {
     if (id === "menu:asalto") return startWizard(interaction);
     if (id === "menu:rey") return rey.startWizard(interaction);
     if (id === "menu:battle") {
-      return interaction.reply({ content: "⚔️ **Battle Royale** todavía no está implementado.", ephemeral: true });
+      return interaction.reply({ content: "⚔️ **Battle Royale** todavía no está implementado.", flags: 64 });
     }
 
     if (id === "asalto:wizard:start") return wizardStart(interaction);

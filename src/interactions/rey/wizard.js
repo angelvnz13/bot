@@ -22,20 +22,20 @@ import {
 
 export async function startWizard(interaction) {
   if (!listSedes().length) {
-    return interaction.reply({ content: "❌ No hay sedes registradas. Crea sedes con `/sedes` primero.", ephemeral: true });
+    return interaction.reply({ content: "❌ No hay sedes registradas. Crea sedes con `/sedes` primero.", flags: 64 });
   }
   const w = newWizard(interaction.user.id);
   reyWizards.set(interaction.user.id, w);
   await interaction.reply({
     embeds: [buildWizardEmbed(w)],
     components: [rowWizardStaff(), rowWizardActions()],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
 export async function wizardStaff(interaction) {
   const w = reyWizards.get(interaction.user.id);
-  if (!w) return interaction.reply({ content: "⚠️ La sesión expiró. Vuelve a abrir `/evento`.", ephemeral: true });
+  if (!w) return interaction.reply({ content: "⚠️ La sesión expiró. Vuelve a abrir `/evento`.", flags: 64 });
   w.staffIds = [...interaction.values];
   await interaction.update({
     embeds: [buildWizardEmbed(w)],
@@ -50,11 +50,11 @@ export async function wizardCancel(interaction) {
 
 export async function wizardStart(interaction) {
   const w = reyWizards.get(interaction.user.id);
-  if (!w) return interaction.reply({ content: "⚠️ La sesión expiró. Vuelve a abrir `/evento`.", ephemeral: true });
-  if (!w.staffIds.length) return interaction.reply({ content: "❌ Debes seleccionar al menos un león.", ephemeral: true });
+  if (!w) return interaction.reply({ content: "⚠️ La sesión expiró. Vuelve a abrir `/evento`.", flags: 64 });
+  if (!w.staffIds.length) return interaction.reply({ content: "❌ Debes seleccionar al menos un león.", flags: 64 });
 
   const guild = interaction.guild;
-  if (!guild) return interaction.reply({ content: "❌ Solo funciona en un servidor.", ephemeral: true });
+  if (!guild) return interaction.reply({ content: "❌ Solo funciona en un servidor.", flags: 64 });
 
   const cfg = getGuildConfig(guild.id);
   const category = guild.channels.cache.get(cfg.categoryId)
@@ -62,7 +62,7 @@ export async function wizardStart(interaction) {
   if (!category || category.type !== ChannelType.GuildCategory) {
     return interaction.reply({
       content: `❌ No encontré la categoría con ID \`${cfg.categoryId}\`. Configúrala con \`/config\`.`,
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -106,7 +106,7 @@ export async function wizardStart(interaction) {
       reason: `Rey del Crimen creado por ${interaction.user.tag}`,
     });
   } catch (e) {
-    return interaction.reply({ content: `❌ Error al crear el canal privado: \`${e.message}\``, ephemeral: true });
+    return interaction.reply({ content: `❌ Error al crear el canal privado: \`${e.message}\``, flags: 64 });
   }
   state.privateChannelId = canal.id;
 

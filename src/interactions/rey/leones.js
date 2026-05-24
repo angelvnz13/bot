@@ -16,12 +16,12 @@ import { refreshPanel } from "./refresh.js";
 // --- Agregar -------------------------------------------------------------
 export async function btnAddLeon(interaction, panelId) {
   const state = reyes.get(panelId);
-  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
+  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", flags: 64 });
 
   if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede agregar leones.",
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -34,7 +34,7 @@ export async function btnAddLeon(interaction, panelId) {
   await interaction.reply({
     content: "🦁 Selecciona al usuario que se incorpora. Las sedes pendientes se redistribuirán entre todos.",
     components: [new ActionRowBuilder().addComponents(select)],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -115,18 +115,18 @@ export async function addLeonSelect(interaction, panelId) {
 // --- Eliminar ------------------------------------------------------------
 export async function btnDelLeon(interaction, panelId) {
   const state = reyes.get(panelId);
-  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
+  if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", flags: 64 });
 
   if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede eliminar leones.",
-      ephemeral: true,
+      flags: 64,
     });
   }
   if (state.leones.length <= 1) {
     return interaction.reply({
       content: "⚠️ No puedes eliminar al único león restante. Usa **Cancelar evento** si quieres cerrarlo.",
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -146,7 +146,7 @@ export async function btnDelLeon(interaction, panelId) {
   await interaction.reply({
     content: "🚷 Selecciona al león a eliminar. Sus sedes se redistribuirán entre el resto manteniendo su estado actual.",
     components: [new ActionRowBuilder().addComponents(select)],
-    ephemeral: true,
+    flags: 64,
   });
 }
 

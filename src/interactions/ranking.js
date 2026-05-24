@@ -132,7 +132,7 @@ function rowBotones(view) {
 export async function replyRanking(interaction) {
   const guildId = interaction.guildId;
   if (!guildId) {
-    return interaction.reply({ content: "❌ Solo funciona en un servidor.", ephemeral: true });
+    return interaction.reply({ content: "❌ Solo funciona en un servidor.", flags: 64 });
   }
 
   await interaction.reply({
@@ -162,7 +162,7 @@ export async function handleRankingViewButton(interaction, view) {
   const messageId = interaction.message?.id;
   const guildId = interaction.guildId;
   if (!guildId || !messageId) {
-    return interaction.reply({ content: "❌ No se puede actualizar este panel.", ephemeral: true });
+    return interaction.reply({ content: "❌ No se puede actualizar este panel.", flags: 64 });
   }
 
   // Si por alguna razón el panel no estaba registrado (mensaje antiguo), lo registramos ahora.

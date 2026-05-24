@@ -27,7 +27,7 @@ import {
 async function wizardExpired(interaction) {
   await interaction.reply({
     content: "⚠️ La sesión de configuración expiró. Vuelve a abrir `/evento`.",
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -35,14 +35,14 @@ export async function startWizard(interaction) {
   if (!listSedes().length) {
     await interaction.reply({
       content: "❌ No hay sedes registradas. Usa `/sedes` para crear sedes primero.",
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }
   if (!listBattleGrounds().length) {
     await interaction.reply({
       content: "❌ No hay lugares de enfrentamiento. Usa `/lugares` para crearlos primero.",
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }
@@ -53,7 +53,7 @@ export async function startWizard(interaction) {
   await interaction.reply({
     embeds: [buildSetupEmbed(state, "Selecciona la **sede donde se enfrentan**")],
     components: [rowLugarSelect()],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -64,7 +64,7 @@ export async function wizardLugar(interaction) {
   if (!state.battleground) {
     return interaction.reply({
       content: "❌ Lugar no encontrado. Configura los lugares con `/lugares`.",
-      ephemeral: true,
+      flags: 64,
     });
   }
   await interaction.update({
@@ -113,17 +113,17 @@ export async function wizardStart(interaction) {
   if (!state) return wizardExpired(interaction);
 
   if (!state.battleground || !state.sedeDef || !state.sedeAtk) {
-    await interaction.reply({ content: "❌ Debes completar todos los pasos antes de iniciar.", ephemeral: true });
+    await interaction.reply({ content: "❌ Debes completar todos los pasos antes de iniciar.", flags: 64 });
     return;
   }
   if (!state.staffIds.length) {
-    await interaction.reply({ content: "❌ Debes seleccionar al menos un león (staff).", ephemeral: true });
+    await interaction.reply({ content: "❌ Debes seleccionar al menos un león (staff).", flags: 64 });
     return;
   }
 
   const guild = interaction.guild;
   if (!guild) {
-    await interaction.reply({ content: "❌ Solo funciona en un servidor.", ephemeral: true });
+    await interaction.reply({ content: "❌ Solo funciona en un servidor.", flags: 64 });
     return;
   }
 
@@ -133,7 +133,7 @@ export async function wizardStart(interaction) {
   if (!category || category.type !== ChannelType.GuildCategory) {
     await interaction.reply({
       content: `❌ No encontré la categoría con ID \`${cfg.categoryId}\`. Configúrala con \`/config\`.`,
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }
@@ -192,7 +192,7 @@ export async function wizardStart(interaction) {
   } catch (e) {
     await interaction.reply({
       content: `❌ Error al crear el canal privado: \`${e.message}\``,
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }

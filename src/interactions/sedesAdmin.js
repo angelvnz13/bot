@@ -69,7 +69,7 @@ export async function replySedesAdmin(interaction) {
   await interaction.reply({
     embeds: [buildListaEmbed()],
     components: [buildAdminRow()],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -191,7 +191,7 @@ export async function handleSedesSelect(interaction, action) {
   const id = Number(interaction.values[0]);
   const sede = getSede(id);
   if (!sede) {
-    await interaction.reply({ content: "❌ La sede ya no existe.", ephemeral: true });
+    await interaction.reply({ content: "❌ La sede ya no existe.", flags: 64 });
     return;
   }
 
@@ -230,7 +230,7 @@ export async function handleSedesModalCreate(interaction) {
   try {
     createSede(name, coords, emoji);
   } catch (e) {
-    await interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ ${e.message}`, flags: 64 });
     return;
   }
   audit("sede.create", { userId: interaction.user.id, guildId: interaction.guild?.id, name, coords, emoji });
@@ -238,7 +238,7 @@ export async function handleSedesModalCreate(interaction) {
     embeds: [buildListaEmbed()],
     components: [buildAdminRow()],
   }).catch(async () => {
-    await interaction.reply({ content: `✅ Sede creada: **${name}**`, ephemeral: true });
+    await interaction.reply({ content: `✅ Sede creada: **${name}**`, flags: 64 });
   });
 }
 
@@ -249,7 +249,7 @@ export async function handleSedesModalEdit(interaction, id) {
   try {
     updateSede(Number(id), name, coords, emoji);
   } catch (e) {
-    await interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ ${e.message}`, flags: 64 });
     return;
   }
   audit("sede.update", { userId: interaction.user.id, guildId: interaction.guild?.id, id, name, coords, emoji });
@@ -257,6 +257,6 @@ export async function handleSedesModalEdit(interaction, id) {
     embeds: [buildListaEmbed()],
     components: [buildAdminRow()],
   }).catch(async () => {
-    await interaction.reply({ content: `✅ Sede actualizada: **${name}**`, ephemeral: true });
+    await interaction.reply({ content: `✅ Sede actualizada: **${name}**`, flags: 64 });
   });
 }

@@ -55,7 +55,7 @@ export async function replyConfig(interaction) {
   await interaction.reply({
     embeds: [buildConfigEmbed(cfg, interaction.guild)],
     components: buildRows(),
-    ephemeral: true,
+    flags: 64,
   });
 }
 

@@ -50,7 +50,7 @@ export async function modalVerify(interaction) {
     nombre = sanitizeNombre(interaction.fields.getTextInputValue("nombre"));
     icid   = sanitizeIcid(interaction.fields.getTextInputValue("icid"));
   } catch (e) {
-    return interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
+    return interaction.reply({ content: `❌ ${e.message}`, flags: 64 });
   }
 
   setSession(interaction.user.id, { nombre, icid });
@@ -58,7 +58,7 @@ export async function modalVerify(interaction) {
   await interaction.reply({
     content: `📋 Datos recibidos: **${nombre}** · ICID **${icid}**\nElige tu rango:`,
     components: [rowRangoSelect()],
-    ephemeral: true,
+    flags: 64,
   });
 }
 
@@ -150,7 +150,7 @@ async function ensureApprover(interaction) {
   if (isApprover(interaction.member)) return true;
   await interaction.reply({
     content: "🚫 No tienes permiso para aprobar o rechazar solicitudes.",
-    ephemeral: true,
+    flags: 64,
   });
   return false;
 }
@@ -163,33 +163,33 @@ export async function btnApprove(interaction, requestMessageId) {
   if (!req) {
     return interaction.reply({
       content: "⚠️ Esta solicitud ya no está activa o el bot fue reiniciado.",
-      ephemeral: true,
+      flags: 64,
     });
   }
   if (req.status !== "pending") {
     return interaction.reply({
       content: `⚠️ Esta solicitud ya fue ${req.status === "approved" ? "aprobada" : "rechazada"}.`,
-      ephemeral: true,
+      flags: 64,
     });
   }
 
   const rank = RANK_BY_KEY[req.rankKey];
   if (!rank) {
-    return interaction.reply({ content: "❌ Rango inválido en la solicitud.", ephemeral: true });
+    return interaction.reply({ content: "❌ Rango inválido en la solicitud.", flags: 64 });
   }
 
   const guild = interaction.guild;
   const me = guild.members.me;
   if (!me?.permissions.has("ManageRoles")) {
-    return interaction.reply({ content: "❌ El bot no tiene permiso **Gestionar roles**.", ephemeral: true });
+    return interaction.reply({ content: "❌ El bot no tiene permiso **Gestionar roles**.", flags: 64 });
   }
   if (!me?.permissions.has("ManageNicknames")) {
-    return interaction.reply({ content: "❌ El bot no tiene permiso **Gestionar apodos**.", ephemeral: true });
+    return interaction.reply({ content: "❌ El bot no tiene permiso **Gestionar apodos**.", flags: 64 });
   }
 
   const member = await guild.members.fetch(req.userId).catch(() => null);
   if (!member) {
-    return interaction.reply({ content: "❌ No encontré al solicitante en el servidor.", ephemeral: true });
+    return interaction.reply({ content: "❌ No encontré al solicitante en el servidor.", flags: 64 });
   }
 
   const targetRole = guild.roles.cache.get(rank.roleId)
@@ -197,13 +197,13 @@ export async function btnApprove(interaction, requestMessageId) {
   if (!targetRole) {
     return interaction.reply({
       content: `❌ El rol del rango **${rank.label}** no existe.`,
-      ephemeral: true,
+      flags: 64,
     });
   }
   if (me.roles.highest.position <= targetRole.position) {
     return interaction.reply({
       content: `❌ El rol del bot está por debajo de **${rank.label}**. Pide a un admin que lo suba.`,
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -215,7 +215,7 @@ export async function btnApprove(interaction, requestMessageId) {
   } catch (e) {
     return interaction.reply({
       content: `❌ Error al asignar el rol: \`${e.message}\``,
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -265,13 +265,13 @@ export async function btnReject(interaction, requestMessageId) {
   if (!req) {
     return interaction.reply({
       content: "⚠️ Esta solicitud ya no está activa o el bot fue reiniciado.",
-      ephemeral: true,
+      flags: 64,
     });
   }
   if (req.status !== "pending") {
     return interaction.reply({
       content: `⚠️ Esta solicitud ya fue ${req.status === "approved" ? "aprobada" : "rechazada"}.`,
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -285,7 +285,7 @@ export async function modalReject(interaction, requestMessageId) {
   if (!req || req.status !== "pending") {
     return interaction.reply({
       content: "⚠️ Esta solicitud ya no está activa.",
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -325,7 +325,7 @@ export async function modalReject(interaction, requestMessageId) {
     logger.warn("set.reject.editFailed", { err: e.message });
   }
 
-  await interaction.reply({ content: `🚫 Solicitud rechazada con motivo: ${motivo}`, ephemeral: true });
+  await interaction.reply({ content: `🚫 Solicitud rechazada con motivo: ${motivo}`, flags: 64 });
 
   deleteRequest(requestMessageId);
 }

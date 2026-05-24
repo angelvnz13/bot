@@ -20,7 +20,7 @@ export async function ensureAdmin(interaction) {
     if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "🚫 No tienes permiso para usar este comando. Pide a un administrador que te asigne el rol configurado o usa `/config`.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
