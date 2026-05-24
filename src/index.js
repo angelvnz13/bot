@@ -12,6 +12,7 @@ import { handleInteraction } from "./interactions/router.js";
 import { sendMenuEventos } from "./interactions/menu.js";
 import { sendSedesAdmin } from "./interactions/sedesAdmin.js";
 import { attachRankingClient } from "./interactions/ranking.js";
+import { seedDefaultsIfEmpty } from "./seedDefaults.js";
 
 import { logger } from "./logger.js";
 import { audit } from "./audit.js";
@@ -49,6 +50,13 @@ const commands = [
 client.once("ready", async () => {
   logger.info("ready", { user: client.user.tag, id: client.user.id });
   audit("bot.startup", { tag: client.user.tag });
+
+  // Auto-seed: si la DB está vacía (instalación nueva), pobla sedes y lugares.
+  try {
+    seedDefaultsIfEmpty();
+  } catch (e) {
+    logger.error("seed.failed", { err: e.message });
+  }
 
   attachRankingClient(client);
 
