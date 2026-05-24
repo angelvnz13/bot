@@ -38,6 +38,7 @@ export function newReyState({ ownerId, guildId, leones }) {
     guildId,
     privateChannelId: null,
     panelMessageId: null,
+    closed: false, // marca cuando ya se cerró (evita doble cierre)
     leones, // [{ userId, sedes: [{ sede, status, razon }] }]
   };
 }

@@ -11,6 +11,7 @@ export function newAsaltoState(userId) {
     history: [],                // [{ ronda, ganador, atk, dfn }]
     currentRound: 0,
     cancelled: false,
+    closed: false,              // marca cuando ya se cerró (evita doble cierre)
     prepTimeout: null,
     privateChannelId: null,
     panelMessageId: null,

@@ -13,12 +13,18 @@ async function cerrar(interaction, panelId, { cancelado }) {
   const state = reyes.get(panelId);
   if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", flags: 64 });
 
+  if (state.closed) {
+    return interaction.reply({ content: "⚠️ Este evento ya fue cerrado.", flags: 64 });
+  }
+
   if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede cerrarlo.",
       flags: 64,
     });
   }
+
+  state.closed = true;
 
   const cfg = getGuildConfig(state.guildId);
   const log = interaction.client.channels.cache.get(cfg.logChannelId)
