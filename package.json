@@ -1,0 +1,22 @@
+{
+  "name": "bot-eventos-discord",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "seed": "node scripts/seedSedes.js",
+    "seed:lugares": "node scripts/seedLugares.js",
+    "audit:key": "node scripts/generateAuditKey.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}
