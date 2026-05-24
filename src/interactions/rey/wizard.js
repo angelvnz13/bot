@@ -21,14 +21,13 @@ import {
 } from "./components.js";
 
 export async function startWizard(interaction) {
-  const sedesCount = (await listSedes()).length;
-  if (!sedesCount) {
+  if (!listSedes().length) {
     return interaction.reply({ content: "❌ No hay sedes registradas. Crea sedes con `/sedes` primero.", ephemeral: true });
   }
   const w = newWizard(interaction.user.id);
   reyWizards.set(interaction.user.id, w);
   await interaction.reply({
-    embeds: [await buildWizardEmbed(w)],
+    embeds: [buildWizardEmbed(w)],
     components: [rowWizardStaff(), rowWizardActions()],
     ephemeral: true,
   });
@@ -39,7 +38,7 @@ export async function wizardStaff(interaction) {
   if (!w) return interaction.reply({ content: "⚠️ La sesión expiró. Vuelve a abrir `/evento`.", ephemeral: true });
   w.staffIds = [...interaction.values];
   await interaction.update({
-    embeds: [await buildWizardEmbed(w)],
+    embeds: [buildWizardEmbed(w)],
     components: [rowWizardStaff(), rowWizardActions()],
   });
 }
@@ -57,7 +56,7 @@ export async function wizardStart(interaction) {
   const guild = interaction.guild;
   if (!guild) return interaction.reply({ content: "❌ Solo funciona en un servidor.", ephemeral: true });
 
-  const cfg = await getGuildConfig(guild.id);
+  const cfg = getGuildConfig(guild.id);
   const category = guild.channels.cache.get(cfg.categoryId)
     ?? await guild.channels.fetch(cfg.categoryId).catch(() => null);
   if (!category || category.type !== ChannelType.GuildCategory) {
@@ -67,7 +66,7 @@ export async function wizardStart(interaction) {
     });
   }
 
-  const sedes = await listSedes();
+  const sedes = listSedes();
   const leones = repartirSedes(sedes, w.staffIds);
   const state = newReyState({ ownerId: interaction.user.id, guildId: guild.id, leones });
 

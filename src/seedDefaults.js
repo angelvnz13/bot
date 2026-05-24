@@ -1,6 +1,11 @@
 // Si la DB está vacía al arrancar, sembramos las sedes y lugares por defecto.
+// Así el repo no necesita committear data.db.
 
-import { countSedes, listBattleGrounds, replaceAllBattleGrounds } from "./db.js";
+import {
+  countSedes,
+  listBattleGrounds,
+  replaceAllBattleGrounds,
+} from "./db.js";
 import { createSede } from "./db/sedesRepo.js";
 import { logger } from "./logger.js";
 
@@ -49,22 +54,22 @@ const LUGARES_DEFAULT = [
   },
 ];
 
-export async function seedDefaultsIfEmpty() {
-  if ((await countSedes()) === 0) {
+export function seedDefaultsIfEmpty() {
+  if (countSedes() === 0) {
     let added = 0;
     for (const [name, coords, emoji] of SEDES_DEFAULT) {
       try {
-        await createSede(name, coords, emoji);
+        createSede(name, coords, emoji);
         added += 1;
-      } catch {
+      } catch (e) {
         // ignoramos errores individuales (p. ej. UNIQUE si ya existía por carrera)
       }
     }
     logger.info("seed.sedes", { added });
   }
 
-  if ((await listBattleGrounds()).length === 0) {
-    await replaceAllBattleGrounds(LUGARES_DEFAULT);
+  if (listBattleGrounds().length === 0) {
+    replaceAllBattleGrounds(LUGARES_DEFAULT);
     logger.info("seed.lugares", { added: LUGARES_DEFAULT.length });
   }
 }

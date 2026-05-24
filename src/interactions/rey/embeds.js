@@ -5,8 +5,7 @@ import { EmbedBuilder } from "discord.js";
 import { listSedes } from "../../db.js";
 import { buildResumenLinea, statusEmoji } from "./state.js";
 
-export async function buildWizardEmbed(state) {
-  const sedesCount = (await listSedes()).length;
+export function buildWizardEmbed(state) {
   const sel = state.staffIds.length
     ? state.staffIds.map((id) => `<@${id}>`).join(" ")
     : "_ninguno_";
@@ -16,7 +15,7 @@ export async function buildWizardEmbed(state) {
     .setDescription("Selecciona los **leones** que participarán. Las sedes se repartirán entre ellos al iniciar.")
     .addFields(
       { name: "🦁 Leones seleccionados", value: sel },
-      { name: "🗂️ Sedes registradas", value: String(sedesCount), inline: true },
+      { name: "🗂️ Sedes registradas", value: String(listSedes().length), inline: true },
     );
 }
 

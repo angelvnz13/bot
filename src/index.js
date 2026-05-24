@@ -16,7 +16,7 @@ import { seedDefaultsIfEmpty } from "./seedDefaults.js";
 
 import { logger } from "./logger.js";
 import { audit } from "./audit.js";
-import { initSchema, loadActiveAsaltos } from "./db.js";
+import { loadActiveAsaltos } from "./db.js";
 import { rehydrate } from "./state.js";
 import { inc } from "./metrics.js";
 
@@ -51,17 +51,9 @@ client.once("ready", async () => {
   logger.info("ready", { user: client.user.tag, id: client.user.id });
   audit("bot.startup", { tag: client.user.tag });
 
-  // Inicializar esquema en la DB
-  try {
-    await initSchema();
-    logger.info("db.ready");
-  } catch (e) {
-    logger.error("db.init.failed", { err: e.message });
-  }
-
   // Auto-seed: si la DB está vacía (instalación nueva), pobla sedes y lugares.
   try {
-    await seedDefaultsIfEmpty();
+    seedDefaultsIfEmpty();
   } catch (e) {
     logger.error("seed.failed", { err: e.message });
   }
@@ -70,7 +62,7 @@ client.once("ready", async () => {
 
   // Rehidratar asaltos activos persistidos
   try {
-    const rows = await loadActiveAsaltos();
+    const rows = loadActiveAsaltos();
     rehydrate(rows);
     logger.info("rehydrate", { count: rows.length });
   } catch (e) {

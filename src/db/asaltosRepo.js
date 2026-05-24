@@ -1,24 +1,33 @@
-// Persistencia de asaltos activos (sobreviven a reinicios del bot).
+// Persistencia de asaltos activos (para sobrevivir a reinicios del bot).
 
-import { query } from "./pool.js";
+import db from "./index.js";
 
-export async function persistAsalto(state) {
+const stmts = {
+  upsert: db.prepare(`
+    INSERT INTO asaltos_activos(panel_message_id, guild_id, private_channel_id, state_json, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(panel_message_id) DO UPDATE SET
+      private_channel_id = excluded.private_channel_id,
+      state_json         = excluded.state_json,
+      updated_at         = excluded.updated_at
+  `),
+  list:   db.prepare("SELECT * FROM asaltos_activos"),
+  delete: db.prepare("DELETE FROM asaltos_activos WHERE panel_message_id = ?"),
+};
+
+export function persistAsalto(state) {
   if (!state.panelMessageId) return;
-  const json = JSON.stringify(state, (k, v) => (k === "prepTimeout" ? undefined : v));
-  await query(
-    `INSERT INTO asaltos_activos(panel_message_id, guild_id, private_channel_id, state_json, updated_at)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT(panel_message_id) DO UPDATE SET
-       private_channel_id = EXCLUDED.private_channel_id,
-       state_json         = EXCLUDED.state_json,
-       updated_at         = EXCLUDED.updated_at`,
-    [state.panelMessageId, state.guildId, state.privateChannelId, json, Date.now()],
+  stmts.upsert.run(
+    state.panelMessageId,
+    state.guildId,
+    state.privateChannelId,
+    JSON.stringify(state, (k, v) => (k === "prepTimeout" ? undefined : v)),
+    Date.now(),
   );
 }
 
-export async function loadActiveAsaltos() {
-  const { rows } = await query("SELECT * FROM asaltos_activos");
-  return rows.map((row) => ({
+export function loadActiveAsaltos() {
+  return stmts.list.all().map((row) => ({
     panelMessageId: row.panel_message_id,
     guildId: row.guild_id,
     privateChannelId: row.private_channel_id,
@@ -26,8 +35,6 @@ export async function loadActiveAsaltos() {
   }));
 }
 
-export async function deleteAsaltoRow(panelMessageId) {
-  await query("DELETE FROM asaltos_activos WHERE panel_message_id = $1", [
-    panelMessageId,
-  ]);
+export function deleteAsaltoRow(panelMessageId) {
+  stmts.delete.run(panelMessageId);
 }

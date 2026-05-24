@@ -1,4 +1,6 @@
 // Panel de administración de "lugares de enfrentamiento" (battle_grounds).
+// Cada lugar tiene: nombre, info opcional (rango de niveles, etc.), coords de
+// defensa y coords de ataque.
 
 import {
   ActionRowBuilder,
@@ -20,8 +22,11 @@ import {
 } from "../db.js";
 import { audit } from "../audit.js";
 
-export async function buildLugaresEmbed() {
-  const list = await listBattleGrounds();
+// ---------------------------------------------------------------------------
+// Embeds y rows
+// ---------------------------------------------------------------------------
+export function buildLugaresEmbed() {
+  const list = listBattleGrounds();
   const embed = new EmbedBuilder()
     .setTitle("📍 Lugares de enfrentamiento")
     .setColor(0x5865f2)
@@ -49,8 +54,8 @@ export function buildLugaresAdminRow() {
   );
 }
 
-async function rowSelectLugar(action /* "edit" | "delete" */) {
-  const list = await listBattleGrounds();
+function rowSelectLugar(action /* "edit" | "delete" */) {
+  const list = listBattleGrounds();
   const sel = new StringSelectMenuBuilder()
     .setCustomId(`lugares:select:${action}`)
     .setPlaceholder(action === "edit" ? "Selecciona el lugar a editar..." : "Selecciona el lugar a eliminar...")
@@ -122,7 +127,7 @@ export async function replyLugaresAdmin(interaction) {
   const { ensureAdmin } = await import("../permissions.js");
   if (!(await ensureAdmin(interaction))) return;
   await interaction.reply({
-    embeds: [await buildLugaresEmbed()],
+    embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
     ephemeral: true,
   });
@@ -130,7 +135,7 @@ export async function replyLugaresAdmin(interaction) {
 
 async function showAdminPanel(interaction) {
   await interaction.update({
-    embeds: [await buildLugaresEmbed()],
+    embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
   });
 }
@@ -148,7 +153,7 @@ export async function handleLugaresButton(interaction, action) {
             .setDescription("Selecciona el lugar a editar.")
             .setColor(0x5865f2),
         ],
-        components: [await rowSelectLugar("edit"), rowVolver()],
+        components: [rowSelectLugar("edit"), rowVolver()],
       });
       return;
     case "delete":
@@ -159,7 +164,7 @@ export async function handleLugaresButton(interaction, action) {
             .setDescription("Selecciona el lugar a eliminar.")
             .setColor(0xed4245),
         ],
-        components: [await rowSelectLugar("delete"), rowVolver()],
+        components: [rowSelectLugar("delete"), rowVolver()],
       });
       return;
     case "refresh":
@@ -171,7 +176,7 @@ export async function handleLugaresButton(interaction, action) {
 
 export async function handleLugaresSelect(interaction, action) {
   const id = Number(interaction.values[0]);
-  const bg = await getBattleGround(id);
+  const bg = getBattleGround(id);
   if (!bg) {
     return interaction.reply({ content: "❌ Lugar no encontrado.", ephemeral: true });
   }
@@ -181,6 +186,7 @@ export async function handleLugaresSelect(interaction, action) {
     return;
   }
 
+  // delete -> confirmación
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`lugares:confirmDelete:${bg.id}`).setStyle(ButtonStyle.Danger).setLabel("Eliminar").setEmoji("🗑️"),
     new ButtonBuilder().setCustomId("lugares:back").setStyle(ButtonStyle.Secondary).setLabel("Cancelar"),
@@ -197,8 +203,8 @@ export async function handleLugaresSelect(interaction, action) {
 }
 
 export async function handleLugaresConfirmDelete(interaction, id) {
-  const bg = await getBattleGround(Number(id));
-  await deleteBattleGround(Number(id));
+  const bg = getBattleGround(Number(id));
+  deleteBattleGround(Number(id));
   audit("lugar.delete", { userId: interaction.user.id, guildId: interaction.guild?.id, name: bg?.name, id });
   await showAdminPanel(interaction);
 }
@@ -209,13 +215,13 @@ export async function handleLugaresModalCreate(interaction) {
   const def  = interaction.fields.getTextInputValue("def");
   const atk  = interaction.fields.getTextInputValue("atk");
   try {
-    await createBattleGround({ name, coordsDef: def, coordsAtk: atk, info });
+    createBattleGround({ name, coordsDef: def, coordsAtk: atk, info });
   } catch (e) {
     return interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
   }
   audit("lugar.create", { userId: interaction.user.id, guildId: interaction.guild?.id, name, info, coords_def: def, coords_atk: atk });
   await interaction.update?.({
-    embeds: [await buildLugaresEmbed()],
+    embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
   }).catch(async () => {
     await interaction.reply({ content: `✅ Lugar creado: **${name}**`, ephemeral: true });
@@ -228,13 +234,13 @@ export async function handleLugaresModalEdit(interaction, id) {
   const def  = interaction.fields.getTextInputValue("def");
   const atk  = interaction.fields.getTextInputValue("atk");
   try {
-    await updateBattleGround(Number(id), { name, coordsDef: def, coordsAtk: atk, info });
+    updateBattleGround(Number(id), { name, coordsDef: def, coordsAtk: atk, info });
   } catch (e) {
     return interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
   }
   audit("lugar.update", { userId: interaction.user.id, guildId: interaction.guild?.id, id, name, info, coords_def: def, coords_atk: atk });
   await interaction.update?.({
-    embeds: [await buildLugaresEmbed()],
+    embeds: [buildLugaresEmbed()],
     components: [buildLugaresAdminRow()],
   }).catch(async () => {
     await interaction.reply({ content: `✅ Lugar actualizado: **${name}**`, ephemeral: true });

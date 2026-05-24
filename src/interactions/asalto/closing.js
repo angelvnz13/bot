@@ -12,7 +12,7 @@ export async function cerrarAsalto(interaction, state, { cancelado, ganador }) {
   const guild = interaction.guild;
   if (!guild) return;
 
-  const cfg = await getGuildConfig(guild.id);
+  const cfg = getGuildConfig(guild.id);
   const log = guild.channels.cache.get(cfg.logChannelId)
     ?? await guild.channels.fetch(cfg.logChannelId).catch(() => null);
   if (log && log.isTextBased()) {
@@ -45,7 +45,7 @@ export async function cerrarAsalto(interaction, state, { cancelado, ganador }) {
 
   if (!cancelado) {
     const participantes = [state.ownerId, ...(state.staffIds || [])];
-    await logEvent({
+    logEvent({
       guildId: guild.id,
       userIds: participantes,
       eventType: "asalto",

@@ -1,63 +1,76 @@
-// CRUD de sedes (clanes) + tombstones.
+// CRUD de sedes (clanes) + tombstones (sedes eliminadas).
 
-import { pool, query } from "./pool.js";
+import db from "./index.js";
 import { sanitizeName, sanitizeCoords, sanitizeEmoji } from "./sanitize.js";
 import { TTLCache } from "../cache.js";
 
+const stmts = {
+  list:        db.prepare("SELECT id, name, coords, emoji FROM sedes ORDER BY name"),
+  byId:        db.prepare("SELECT id, name, coords, emoji FROM sedes WHERE id = ?"),
+  insert:      db.prepare("INSERT INTO sedes(name, coords, emoji) VALUES (?, ?, ?)"),
+  update:      db.prepare("UPDATE sedes SET name = ?, coords = ?, emoji = ? WHERE id = ?"),
+  delete:      db.prepare("DELETE FROM sedes WHERE id = ?"),
+  count:       db.prepare("SELECT COUNT(*) AS n FROM sedes"),
+  deleteAll:   db.prepare("DELETE FROM sedes"),
+  resetSeq:    db.prepare("DELETE FROM sqlite_sequence WHERE name='sedes'"),
+
+  tombstoneInsert: db.prepare(`
+    INSERT INTO sedes_eliminadas(name, deleted_at) VALUES (?, ?)
+    ON CONFLICT(name) DO UPDATE SET deleted_at = excluded.deleted_at
+  `),
+  tombstoneDelete: db.prepare("DELETE FROM sedes_eliminadas WHERE name = ?"),
+  tombstoneList:   db.prepare("SELECT name FROM sedes_eliminadas"),
+
+  asaltoDeleteByName: db.prepare(
+    "DELETE FROM asaltos_activos WHERE state_json LIKE '%\"name\":\"' || @name || '\"%'"
+  ),
+};
+
 const sedesCache = new TTLCache(30 * 1000);
 const SEDES_KEY = "all";
-function invalidateSedes() { sedesCache.delete(SEDES_KEY); }
 
-export async function listSedes() {
+function invalidateSedes() {
+  sedesCache.delete(SEDES_KEY);
+}
+
+export function listSedes() {
   const cached = sedesCache.get(SEDES_KEY);
   if (cached) return cached;
-  const { rows } = await query(
-    "SELECT id, name, coords, emoji FROM sedes ORDER BY name",
-  );
+  const rows = stmts.list.all();
   sedesCache.set(SEDES_KEY, rows);
   return rows;
 }
 
-export async function getSede(id) {
-  const { rows } = await query(
-    "SELECT id, name, coords, emoji FROM sedes WHERE id = $1",
-    [Number(id)],
-  );
-  return rows[0];
+export function getSede(id) {
+  return stmts.byId.get(Number(id));
 }
 
-export async function createSede(name, coords = "", emoji = "") {
+export function createSede(name, coords = "", emoji = "") {
   const n = sanitizeName(name);
   const c = sanitizeCoords(coords);
   const e = sanitizeEmoji(emoji);
   try {
-    const { rows } = await query(
-      "INSERT INTO sedes(name, coords, emoji) VALUES ($1, $2, $3) RETURNING id, name, coords, emoji",
-      [n, c, e],
-    );
-    await query("DELETE FROM sedes_eliminadas WHERE name = $1", [n]);
+    const info = stmts.insert.run(n, c, e);
+    stmts.tombstoneDelete.run(n);
     invalidateSedes();
-    return rows[0];
+    return { id: info.lastInsertRowid, name: n, coords: c, emoji: e };
   } catch (err) {
-    if (String(err.message).match(/duplicate|unique/i)) {
+    if (String(err.message).includes("UNIQUE")) {
       throw new Error(`Ya existe una sede con el nombre '${n}'.`);
     }
     throw err;
   }
 }
 
-export async function updateSede(id, name, coords, emoji = "") {
+export function updateSede(id, name, coords, emoji = "") {
   const n = sanitizeName(name);
   const c = sanitizeCoords(coords);
   const e = sanitizeEmoji(emoji);
   try {
-    await query(
-      "UPDATE sedes SET name = $1, coords = $2, emoji = $3 WHERE id = $4",
-      [n, c, e, Number(id)],
-    );
+    stmts.update.run(n, c, e, Number(id));
     invalidateSedes();
   } catch (err) {
-    if (String(err.message).match(/duplicate|unique/i)) {
+    if (String(err.message).includes("UNIQUE")) {
       throw new Error(`Ya existe otra sede con el nombre '${n}'.`);
     }
     throw err;
@@ -65,69 +78,44 @@ export async function updateSede(id, name, coords, emoji = "") {
   return getSede(id);
 }
 
-export async function deleteSede(id) {
-  const sede = await getSede(id);
+export function deleteSede(id) {
+  const sede = getSede(id);
   if (!sede) return null;
 
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("DELETE FROM sedes WHERE id = $1", [Number(id)]);
-    await client.query(
-      "INSERT INTO sedes_eliminadas(name, deleted_at) VALUES ($1, $2) ON CONFLICT(name) DO UPDATE SET deleted_at = EXCLUDED.deleted_at",
-      [sede.name, Date.now()],
-    );
-    await client.query(
-      "DELETE FROM asaltos_activos WHERE state_json LIKE '%\"name\":\"' || $1 || '\"%'",
-      [sede.name],
-    );
-    await client.query("COMMIT");
-  } catch (e) {
-    await client.query("ROLLBACK").catch(() => {});
-    throw e;
-  } finally {
-    client.release();
-  }
+  const tx = db.transaction(() => {
+    stmts.delete.run(Number(id));
+    stmts.tombstoneInsert.run(sede.name, Date.now());
+    stmts.asaltoDeleteByName.run({ name: sede.name });
+  });
+  tx();
 
   invalidateSedes();
   return sede;
 }
 
-export async function listTombstones() {
-  const { rows } = await query("SELECT name FROM sedes_eliminadas");
-  return rows.map((r) => r.name);
+export function listTombstones() {
+  return stmts.tombstoneList.all().map((r) => r.name);
 }
 
-export async function clearTombstone(name) {
-  await query("DELETE FROM sedes_eliminadas WHERE name = $1", [String(name)]);
+export function clearTombstone(name) {
+  stmts.tombstoneDelete.run(name);
 }
 
-export async function countSedes() {
-  const { rows } = await query("SELECT COUNT(*)::int AS n FROM sedes");
-  return rows[0].n;
+export function countSedes() {
+  return stmts.count.get().n;
 }
 
-export async function replaceAllSedes(rows) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("DELETE FROM sedes");
-    await client.query("ALTER SEQUENCE sedes_id_seq RESTART WITH 1");
-    for (const row of rows) {
+export function replaceAllSedes(rows) {
+  const tx = db.transaction((items) => {
+    stmts.deleteAll.run();
+    stmts.resetSeq.run();
+    for (const row of items) {
       const [name, coords, emoji = ""] = row;
-      const n = sanitizeName(name);
-      await client.query(
-        "INSERT INTO sedes(name, coords, emoji) VALUES ($1, $2, $3)",
-        [n, sanitizeCoords(coords), sanitizeEmoji(emoji)],
-      );
-      await client.query("DELETE FROM sedes_eliminadas WHERE name = $1", [n]);
+      const sanitized = sanitizeName(name);
+      stmts.insert.run(sanitized, sanitizeCoords(coords), sanitizeEmoji(emoji));
+      stmts.tombstoneDelete.run(sanitized);
     }
-    await client.query("COMMIT");
-  } catch (e) {
-    await client.query("ROLLBACK").catch(() => {});
-    throw e;
-  } finally {
-    client.release();
-  }
+  });
+  tx(rows);
   invalidateSedes();
 }

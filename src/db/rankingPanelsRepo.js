@@ -1,44 +1,42 @@
-// Persistencia de los paneles de /ranking publicados.
+// Persistencia de los paneles de /ranking publicados en cada servidor.
 
-import { query } from "./pool.js";
+import db from "./index.js";
 
-export async function registerRankingPanel({ channelId, messageId, guildId, view = "total" }) {
-  await query(
-    `INSERT INTO ranking_panels(channel_id, message_id, guild_id, view)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT(channel_id, message_id) DO UPDATE SET
-       guild_id = EXCLUDED.guild_id,
-       view     = EXCLUDED.view`,
-    [String(channelId), String(messageId), String(guildId), String(view)],
-  );
+const stmts = {
+  insert: db.prepare(`
+    INSERT OR REPLACE INTO ranking_panels(channel_id, message_id, guild_id, view)
+    VALUES (?, ?, ?, ?)
+  `),
+  setView: db.prepare(
+    "UPDATE ranking_panels SET view = ? WHERE channel_id = ? AND message_id = ?"
+  ),
+  get: db.prepare(
+    "SELECT channel_id, message_id, guild_id, view FROM ranking_panels WHERE channel_id = ? AND message_id = ?"
+  ),
+  delete: db.prepare(
+    "DELETE FROM ranking_panels WHERE channel_id = ? AND message_id = ?"
+  ),
+  forGuild: db.prepare(
+    "SELECT channel_id, message_id, guild_id, view FROM ranking_panels WHERE guild_id = ?"
+  ),
+};
+
+export function registerRankingPanel({ channelId, messageId, guildId, view = "total" }) {
+  stmts.insert.run(String(channelId), String(messageId), String(guildId), String(view));
 }
 
-export async function setRankingPanelView({ channelId, messageId, view }) {
-  await query(
-    "UPDATE ranking_panels SET view = $1 WHERE channel_id = $2 AND message_id = $3",
-    [String(view), String(channelId), String(messageId)],
-  );
+export function setRankingPanelView({ channelId, messageId, view }) {
+  stmts.setView.run(String(view), String(channelId), String(messageId));
 }
 
-export async function getRankingPanel({ channelId, messageId }) {
-  const { rows } = await query(
-    "SELECT channel_id, message_id, guild_id, view FROM ranking_panels WHERE channel_id = $1 AND message_id = $2",
-    [String(channelId), String(messageId)],
-  );
-  return rows[0];
+export function getRankingPanel({ channelId, messageId }) {
+  return stmts.get.get(String(channelId), String(messageId));
 }
 
-export async function unregisterRankingPanel({ channelId, messageId }) {
-  await query(
-    "DELETE FROM ranking_panels WHERE channel_id = $1 AND message_id = $2",
-    [String(channelId), String(messageId)],
-  );
+export function unregisterRankingPanel({ channelId, messageId }) {
+  stmts.delete.run(String(channelId), String(messageId));
 }
 
-export async function listRankingPanels(guildId) {
-  const { rows } = await query(
-    "SELECT channel_id, message_id, guild_id, view FROM ranking_panels WHERE guild_id = $1",
-    [String(guildId)],
-  );
-  return rows;
+export function listRankingPanels(guildId) {
+  return stmts.forGuild.all(String(guildId));
 }

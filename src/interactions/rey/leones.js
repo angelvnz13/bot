@@ -18,7 +18,7 @@ export async function btnAddLeon(interaction, panelId) {
   const state = reyes.get(panelId);
   if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
 
-  if (interaction.user.id !== state.ownerId && !(await isAdmin(interaction.member))) {
+  if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede agregar leones.",
       ephemeral: true,
@@ -42,7 +42,7 @@ export async function addLeonSelect(interaction, panelId) {
   const state = reyes.get(panelId);
   if (!state) return interaction.update({ content: "⚠️ Este evento ya no está activo.", components: [] });
 
-  if (interaction.user.id !== state.ownerId && !(await isAdmin(interaction.member))) {
+  if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.update({
       content: "🚫 Solo el creador del evento o un administrador puede agregar leones.",
       components: [],
@@ -117,7 +117,7 @@ export async function btnDelLeon(interaction, panelId) {
   const state = reyes.get(panelId);
   if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
 
-  if (interaction.user.id !== state.ownerId && !(await isAdmin(interaction.member))) {
+  if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede eliminar leones.",
       ephemeral: true,
@@ -154,7 +154,7 @@ export async function delLeonSelect(interaction, panelId) {
   const state = reyes.get(panelId);
   if (!state) return interaction.update({ content: "⚠️ Este evento ya no está activo.", components: [] });
 
-  if (interaction.user.id !== state.ownerId && !(await isAdmin(interaction.member))) {
+  if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
     return interaction.update({
       content: "🚫 Solo el creador del evento o un administrador puede eliminar leones.",
       components: [],
