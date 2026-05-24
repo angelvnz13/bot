@@ -4,18 +4,17 @@
 import { PermissionFlagsBits } from "discord.js";
 import { getGuildConfig } from "./guildConfig.js";
 
-export function isAdmin(member) {
+export async function isAdmin(member) {
   if (!member) return false;
-  // Permiso nativo siempre vale
   if (member.permissions?.has?.(PermissionFlagsBits.ManageGuild)) return true;
 
-  const cfg = getGuildConfig(member.guild.id);
+  const cfg = await getGuildConfig(member.guild.id);
   if (cfg?.adminRoleId && member.roles?.cache?.has?.(cfg.adminRoleId)) return true;
   return false;
 }
 
 export async function ensureAdmin(interaction) {
-  const ok = isAdmin(interaction.member);
+  const ok = await isAdmin(interaction.member);
   if (!ok) {
     if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
       await interaction.reply({

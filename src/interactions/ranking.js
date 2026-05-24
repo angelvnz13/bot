@@ -41,9 +41,8 @@ function startOfMonthMs() {
 }
 
 function startOfWeekMs() {
-  // Lunes 00:00 como inicio de semana
   const d = new Date();
-  const diaSemana = (d.getDay() + 6) % 7; // 0 = lunes
+  const diaSemana = (d.getDay() + 6) % 7;
   const lunes = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diaSemana, 0, 0, 0, 0);
   return lunes.getTime();
 }
@@ -82,7 +81,7 @@ function listaLineas(rows) {
   }).join("\n\n");
 }
 
-function rowsForView(guildId, view) {
+async function rowsForView(guildId, view) {
   switch (view) {
     case "weekly":  return getRankingSince(guildId, startOfWeekMs(), 10);
     case "monthly": return getRankingSince(guildId, startOfMonthMs(), 10);
@@ -98,8 +97,8 @@ function tituloVista(view) {
   }
 }
 
-export function buildRankingEmbed(guildId, view = "total") {
-  const rows = rowsForView(guildId, view);
+export async function buildRankingEmbed(guildId, view = "total") {
+  const rows = await rowsForView(guildId, view);
   return new EmbedBuilder()
     .setTitle("🏆 Ranking de eventos")
     .setColor(0xf1c40f)
@@ -136,14 +135,14 @@ export async function replyRanking(interaction) {
   }
 
   await interaction.reply({
-    embeds: [buildRankingEmbed(guildId, "total")],
+    embeds: [await buildRankingEmbed(guildId, "total")],
     components: [rowBotones("total")],
     allowedMentions: { parse: [] },
   });
 
   try {
     const msg = await interaction.fetchReply();
-    registerRankingPanel({
+    await registerRankingPanel({
       channelId: msg.channelId,
       messageId: msg.id,
       guildId,
@@ -165,16 +164,15 @@ export async function handleRankingViewButton(interaction, view) {
     return interaction.reply({ content: "❌ No se puede actualizar este panel.", ephemeral: true });
   }
 
-  // Si por alguna razón el panel no estaba registrado (mensaje antiguo), lo registramos ahora.
-  const existing = getRankingPanel({ channelId, messageId });
+  const existing = await getRankingPanel({ channelId, messageId });
   if (!existing) {
-    registerRankingPanel({ channelId, messageId, guildId, view });
+    await registerRankingPanel({ channelId, messageId, guildId, view });
   } else {
-    setRankingPanelView({ channelId, messageId, view });
+    await setRankingPanelView({ channelId, messageId, view });
   }
 
   await interaction.update({
-    embeds: [buildRankingEmbed(guildId, view)],
+    embeds: [await buildRankingEmbed(guildId, view)],
     components: [rowBotones(view)],
     allowedMentions: { parse: [] },
   });
@@ -185,7 +183,7 @@ export async function handleRankingViewButton(interaction, view) {
 // ---------------------------------------------------------------------------
 async function refreshAllPanels(guildId) {
   if (!clientRef) return;
-  const panels = listRankingPanels(guildId);
+  const panels = await listRankingPanels(guildId);
   if (!panels.length) return;
 
   for (const p of panels) {
@@ -193,16 +191,16 @@ async function refreshAllPanels(guildId) {
       const channel = clientRef.channels.cache.get(p.channel_id)
         ?? await clientRef.channels.fetch(p.channel_id).catch(() => null);
       if (!channel?.isTextBased?.()) {
-        unregisterRankingPanel({ channelId: p.channel_id, messageId: p.message_id });
+        await unregisterRankingPanel({ channelId: p.channel_id, messageId: p.message_id });
         continue;
       }
       const msg = await channel.messages.fetch(p.message_id).catch(() => null);
       if (!msg) {
-        unregisterRankingPanel({ channelId: p.channel_id, messageId: p.message_id });
+        await unregisterRankingPanel({ channelId: p.channel_id, messageId: p.message_id });
         continue;
       }
       await msg.edit({
-        embeds: [buildRankingEmbed(p.guild_id, p.view || "total")],
+        embeds: [await buildRankingEmbed(p.guild_id, p.view || "total")],
         components: [rowBotones(p.view || "total")],
         allowedMentions: { parse: [] },
       });

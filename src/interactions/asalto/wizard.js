@@ -32,14 +32,14 @@ async function wizardExpired(interaction) {
 }
 
 export async function startWizard(interaction) {
-  if (!listSedes().length) {
+  if (!(await listSedes()).length) {
     await interaction.reply({
       content: "❌ No hay sedes registradas. Usa `/sedes` para crear sedes primero.",
       ephemeral: true,
     });
     return;
   }
-  if (!listBattleGrounds().length) {
+  if (!(await listBattleGrounds()).length) {
     await interaction.reply({
       content: "❌ No hay lugares de enfrentamiento. Usa `/lugares` para crearlos primero.",
       ephemeral: true,
@@ -52,7 +52,7 @@ export async function startWizard(interaction) {
 
   await interaction.reply({
     embeds: [buildSetupEmbed(state, "Selecciona la **sede donde se enfrentan**")],
-    components: [rowLugarSelect()],
+    components: [await rowLugarSelect()],
     ephemeral: true,
   });
 }
@@ -60,7 +60,7 @@ export async function startWizard(interaction) {
 export async function wizardLugar(interaction) {
   const state = getWizard(interaction.user.id);
   if (!state) return wizardExpired(interaction);
-  state.battleground = getBattleGround(Number(interaction.values[0]));
+  state.battleground = await getBattleGround(Number(interaction.values[0]));
   if (!state.battleground) {
     return interaction.reply({
       content: "❌ Lugar no encontrado. Configura los lugares con `/lugares`.",
@@ -69,24 +69,24 @@ export async function wizardLugar(interaction) {
   }
   await interaction.update({
     embeds: [buildSetupEmbed(state, "Selecciona la **sede que DEFIENDE** 🛡️")],
-    components: [rowSedeDef()],
+    components: [await rowSedeDef()],
   });
 }
 
 export async function wizardDef(interaction) {
   const state = getWizard(interaction.user.id);
   if (!state) return wizardExpired(interaction);
-  state.sedeDef = getSede(Number(interaction.values[0]));
+  state.sedeDef = await getSede(Number(interaction.values[0]));
   await interaction.update({
     embeds: [buildSetupEmbed(state, "Selecciona la **sede que ATACA** ⚔️")],
-    components: [rowSedeAtk(state.sedeDef.id)],
+    components: [await rowSedeAtk(state.sedeDef.id)],
   });
 }
 
 export async function wizardAtk(interaction) {
   const state = getWizard(interaction.user.id);
   if (!state) return wizardExpired(interaction);
-  state.sedeAtk = getSede(Number(interaction.values[0]));
+  state.sedeAtk = await getSede(Number(interaction.values[0]));
   await interaction.update({
     embeds: [buildSetupEmbed(state, "Selecciona los **leones (staff)** que participan 🦁")],
     components: [rowStaff(), rowIniciar()],
@@ -127,7 +127,7 @@ export async function wizardStart(interaction) {
     return;
   }
 
-  const cfg = getGuildConfig(guild.id);
+  const cfg = await getGuildConfig(guild.id);
   const category = guild.channels.cache.get(cfg.categoryId)
     ?? await guild.channels.fetch(cfg.categoryId).catch(() => null);
   if (!category || category.type !== ChannelType.GuildCategory) {

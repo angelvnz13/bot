@@ -2,19 +2,20 @@
 
 import { EmbedBuilder } from "discord.js";
 
-import db from "../db.js";
+import { deleteEventsForUser, query } from "../db.js";
 import { audit, forgetUserFromAudit } from "../audit.js";
-import { deleteEventsForUser } from "../db.js";
-
-const stmtDeleteAsaltosByUser = db.prepare(`
-  DELETE FROM asaltos_activos
-  WHERE state_json LIKE '%"' || @uid || '"%'
-`);
 
 export async function replyForgetMe(interaction) {
   const userId = interaction.user.id;
-  const removed = stmtDeleteAsaltosByUser.run({ uid: userId }).changes;
-  const removedEvents = deleteEventsForUser(userId);
+
+  // Eliminar asaltos persistidos donde aparezca el userId
+  const result = await query(
+    "DELETE FROM asaltos_activos WHERE state_json LIKE '%\"' || $1 || '\"%'",
+    [userId],
+  );
+  const removed = result.rowCount;
+
+  const removedEvents = await deleteEventsForUser(userId);
   const auditResult = forgetUserFromAudit(userId);
 
   audit("privacy.forgetme", {

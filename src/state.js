@@ -1,13 +1,20 @@
-// Almacén en memoria + persistencia en SQLite de los asaltos activos.
+// Almacén en memoria + persistencia de los asaltos activos.
 
 import { deleteAsaltoRow, persistAsalto } from "./db.js";
+import { logger } from "./logger.js";
 
 const asaltos = new Map();   // messageId -> state
 const wizards = new Map();   // userId -> state (configuración previa al arranque)
 
+function fireAndForget(promise, ctx) {
+  promise.catch((err) =>
+    logger.warn(ctx, { err: err?.message ?? String(err) }),
+  );
+}
+
 export function setAsalto(messageId, state) {
   asaltos.set(messageId, state);
-  persistAsalto(state);
+  fireAndForget(persistAsalto(state), "state.persistAsalto.failed");
 }
 
 export function getAsalto(messageId) {
@@ -16,12 +23,12 @@ export function getAsalto(messageId) {
 
 export function touchAsalto(messageId) {
   const s = asaltos.get(messageId);
-  if (s) persistAsalto(s);
+  if (s) fireAndForget(persistAsalto(s), "state.persistAsalto.failed");
 }
 
 export function deleteAsalto(messageId) {
   asaltos.delete(messageId);
-  deleteAsaltoRow(messageId);
+  fireAndForget(deleteAsaltoRow(messageId), "state.deleteAsaltoRow.failed");
 }
 
 export function setWizard(userId, state) {
@@ -36,7 +43,6 @@ export function deleteWizard(userId) {
   wizards.delete(userId);
 }
 
-// Cargar asaltos persistidos al arrancar (se invoca desde index.js).
 export function rehydrate(rows) {
   for (const r of rows) {
     asaltos.set(r.panelMessageId, r.state);

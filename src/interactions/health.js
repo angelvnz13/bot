@@ -21,6 +21,7 @@ function fmtUptime(sec) {
 export async function replyHealth(interaction) {
   if (!(await ensureAdmin(interaction))) return;
   const snap = snapshot();
+  const sedesCount = await countSedes();
 
   const counters = Object.entries(snap.counters)
     .map(([k, v]) => `\`${k}\`: ${v}`)
@@ -37,7 +38,7 @@ export async function replyHealth(interaction) {
       { name: "Uptime", value: fmtUptime(snap.uptimeSec), inline: true },
       { name: "Memoria RSS", value: fmtMB(snap.rss), inline: true },
       { name: "Heap", value: fmtMB(snap.heapUsed), inline: true },
-      { name: "Sedes registradas", value: String(countSedes()), inline: true },
+      { name: "Sedes registradas", value: String(sedesCount), inline: true },
       { name: "Latencia API", value: `${interaction.client.ws.ping} ms`, inline: true },
       { name: "Contadores", value: counters.slice(0, 1024) },
       { name: "Tiempos", value: timings.slice(0, 1024) },

@@ -1,4 +1,6 @@
 // Componentes (rows de botones y selects) del asalto.
+// Como el repo de DB es asíncrono, las funciones que necesitan listar sedes o
+// lugares reciben los datos pre-cargados (las llamadas async se hacen en wizard).
 
 import {
   ActionRowBuilder,
@@ -13,8 +15,7 @@ import { parseEmoji } from "../../emoji.js";
 import { bandosParaRonda, hayEmpateFinal } from "./state.js";
 
 // --- Helpers de opciones --------------------------------------------------
-function bgOptions() {
-  const bgs = listBattleGrounds();
+function bgOptions(bgs) {
   if (!bgs.length) return [{ label: "(sin lugares)", value: "0" }];
   return bgs.slice(0, 25).map((b) => {
     const desc = b.info ? `${b.info}`.slice(0, 100) : `def: ${b.coords_def.slice(0, 30)}`.slice(0, 100);
@@ -27,10 +28,10 @@ function bgOptions() {
   });
 }
 
-function sedeOptions(excludeId = null) {
-  const sedes = listSedes().filter((s) => s.id !== excludeId);
-  if (!sedes.length) return [{ label: "(sin sedes)", value: "0" }];
-  return sedes.slice(0, 25).map((s) => {
+function sedeOptions(sedes, excludeId = null) {
+  const filtered = sedes.filter((s) => s.id !== excludeId);
+  if (!filtered.length) return [{ label: "(sin sedes)", value: "0" }];
+  return filtered.slice(0, 25).map((s) => {
     const opt = { label: s.name.slice(0, 100), value: String(s.id) };
     if (s.coords) opt.description = s.coords.slice(0, 100);
     const e = parseEmoji(s.emoji);
@@ -40,30 +41,33 @@ function sedeOptions(excludeId = null) {
 }
 
 // --- Wizard ---------------------------------------------------------------
-export function rowLugarSelect() {
+export async function rowLugarSelect() {
+  const bgs = await listBattleGrounds();
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("asalto:wizard:lugar")
       .setPlaceholder("Sede donde se enfrentan...")
-      .addOptions(bgOptions()),
+      .addOptions(bgOptions(bgs)),
   );
 }
 
-export function rowSedeDef() {
+export async function rowSedeDef() {
+  const sedes = await listSedes();
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("asalto:wizard:def")
       .setPlaceholder("Sede que defiende 🛡️...")
-      .addOptions(sedeOptions()),
+      .addOptions(sedeOptions(sedes)),
   );
 }
 
-export function rowSedeAtk(excludeId) {
+export async function rowSedeAtk(excludeId) {
+  const sedes = await listSedes();
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("asalto:wizard:atk")
       .setPlaceholder("Sede que ataca ⚔️...")
-      .addOptions(sedeOptions(excludeId)),
+      .addOptions(sedeOptions(sedes, excludeId)),
   );
 }
 
@@ -122,10 +126,7 @@ export function rowRonda(state, messageId) {
 }
 
 export function rowResultadoRonda(state, messageId) {
-  // Primera fila: los 4 botones de la ronda siempre visibles.
   const rows = [rowRonda(state, messageId)];
-
-  // Segunda fila: botón de progresión según el estado.
   const progress = new ActionRowBuilder();
   if (state.currentRound < 2) {
     progress.addComponents(
@@ -142,7 +143,6 @@ export function rowResultadoRonda(state, messageId) {
     );
   }
   if (progress.components.length) rows.push(progress);
-
   return rows;
 }
 

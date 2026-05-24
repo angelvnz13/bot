@@ -18,8 +18,8 @@ import {
 } from "../db.js";
 import { audit } from "../audit.js";
 
-export function buildListaEmbed() {
-  const sedes = listSedes();
+export async function buildListaEmbed() {
+  const sedes = await listSedes();
   const embed = new EmbedBuilder()
     .setTitle("🗂️ Gestión de Sedes")
     .setDescription("Administra las sedes, sus emojis y coordenadas.")
@@ -67,7 +67,7 @@ export async function replySedesAdmin(interaction) {
   const { ensureAdmin } = await import("../permissions.js");
   if (!(await ensureAdmin(interaction))) return;
   await interaction.reply({
-    embeds: [buildListaEmbed()],
+    embeds: [await buildListaEmbed()],
     components: [buildAdminRow()],
     ephemeral: true,
   });
@@ -75,7 +75,7 @@ export async function replySedesAdmin(interaction) {
 
 export async function sendSedesAdmin(channel) {
   await channel.send({
-    embeds: [buildListaEmbed()],
+    embeds: [await buildListaEmbed()],
     components: [buildAdminRow()],
   });
 }
@@ -84,13 +84,13 @@ export async function sendSedesAdmin(channel) {
 
 export async function showAdminPanel(interaction) {
   await interaction.update({
-    embeds: [buildListaEmbed()],
+    embeds: [await buildListaEmbed()],
     components: [buildAdminRow()],
   });
 }
 
-export function buildSelectSedeRow(action /* "edit" | "delete" */) {
-  const sedes = listSedes();
+export async function buildSelectSedeRow(action /* "edit" | "delete" */) {
+  const sedes = await listSedes();
   const select = new StringSelectMenuBuilder()
     .setCustomId(`sedes:select:${action}`)
     .setPlaceholder(action === "edit" ? "Selecciona la sede a editar..." : "Selecciona la sede a eliminar...")
@@ -166,7 +166,7 @@ export async function handleSedesButton(interaction, action) {
             .setDescription("Selecciona la sede que quieres editar.")
             .setColor(0x5865f2),
         ],
-        components: [buildSelectSedeRow("edit"), buildBackRow()],
+        components: [await buildSelectSedeRow("edit"), buildBackRow()],
       });
       return;
     case "delete":
@@ -177,7 +177,7 @@ export async function handleSedesButton(interaction, action) {
             .setDescription("Selecciona la sede que quieres eliminar.")
             .setColor(0xed4245),
         ],
-        components: [buildSelectSedeRow("delete"), buildBackRow()],
+        components: [await buildSelectSedeRow("delete"), buildBackRow()],
       });
       return;
     case "refresh":
@@ -189,7 +189,7 @@ export async function handleSedesButton(interaction, action) {
 
 export async function handleSedesSelect(interaction, action) {
   const id = Number(interaction.values[0]);
-  const sede = getSede(id);
+  const sede = await getSede(id);
   if (!sede) {
     await interaction.reply({ content: "❌ La sede ya no existe.", ephemeral: true });
     return;
@@ -200,7 +200,6 @@ export async function handleSedesSelect(interaction, action) {
     return;
   }
 
-  // delete -> confirmación
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`sedes:confirmDelete:${sede.id}`).setStyle(ButtonStyle.Danger).setLabel("Eliminar").setEmoji("🗑️"),
     new ButtonBuilder().setCustomId("sedes:back").setStyle(ButtonStyle.Secondary).setLabel("Cancelar"),
@@ -217,8 +216,8 @@ export async function handleSedesSelect(interaction, action) {
 }
 
 export async function handleSedesConfirmDelete(interaction, id) {
-  const sede = getSede(Number(id));
-  deleteSede(Number(id));
+  const sede = await getSede(Number(id));
+  await deleteSede(Number(id));
   audit("sede.delete", { userId: interaction.user.id, guildId: interaction.guild?.id, sede: sede?.name, id });
   await showAdminPanel(interaction);
 }
@@ -228,14 +227,14 @@ export async function handleSedesModalCreate(interaction) {
   const coords = interaction.fields.getTextInputValue("coords") || "";
   const emoji = interaction.fields.getTextInputValue("emoji") || "";
   try {
-    createSede(name, coords, emoji);
+    await createSede(name, coords, emoji);
   } catch (e) {
     await interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
     return;
   }
   audit("sede.create", { userId: interaction.user.id, guildId: interaction.guild?.id, name, coords, emoji });
   await interaction.update?.({
-    embeds: [buildListaEmbed()],
+    embeds: [await buildListaEmbed()],
     components: [buildAdminRow()],
   }).catch(async () => {
     await interaction.reply({ content: `✅ Sede creada: **${name}**`, ephemeral: true });
@@ -247,14 +246,14 @@ export async function handleSedesModalEdit(interaction, id) {
   const coords = interaction.fields.getTextInputValue("coords") || "";
   const emoji = interaction.fields.getTextInputValue("emoji") || "";
   try {
-    updateSede(Number(id), name, coords, emoji);
+    await updateSede(Number(id), name, coords, emoji);
   } catch (e) {
     await interaction.reply({ content: `❌ ${e.message}`, ephemeral: true });
     return;
   }
   audit("sede.update", { userId: interaction.user.id, guildId: interaction.guild?.id, id, name, coords, emoji });
   await interaction.update?.({
-    embeds: [buildListaEmbed()],
+    embeds: [await buildListaEmbed()],
     components: [buildAdminRow()],
   }).catch(async () => {
     await interaction.reply({ content: `✅ Sede actualizada: **${name}**`, ephemeral: true });

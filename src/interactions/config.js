@@ -51,7 +51,7 @@ function buildRows() {
 
 export async function replyConfig(interaction) {
   if (!(await ensureAdmin(interaction))) return;
-  const cfg = getGuildConfig(interaction.guild.id);
+  const cfg = await getGuildConfig(interaction.guild.id);
   await interaction.reply({
     embeds: [buildConfigEmbed(cfg, interaction.guild)],
     components: buildRows(),
@@ -68,7 +68,7 @@ export async function handleConfigSelect(interaction) {
   else if (id === "config:category") patch.categoryId = value;
   else if (id === "config:log") patch.logChannelId = value;
 
-  const cfg = setGuildConfig(interaction.guild.id, patch);
+  const cfg = await setGuildConfig(interaction.guild.id, patch);
   audit("config.update", { userId: interaction.user.id, guildId: interaction.guild.id, patch });
   await interaction.update({
     embeds: [buildConfigEmbed(cfg, interaction.guild)],

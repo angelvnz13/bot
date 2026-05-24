@@ -1,8 +1,6 @@
-// Fachada del módulo de base de datos.
-// Re-exporta la API pública agrupada por dominio. Si necesitas tocar la
-// implementación, edita los módulos en src/db/.
+// Fachada del módulo de base de datos. Re-exporta la API pública por dominio.
 
-export { default } from "./db/index.js";
+export { pool, query, initSchema } from "./db/pool.js";
 
 export {
   listSedes,
@@ -48,9 +46,6 @@ export {
 } from "./db/rankingPanelsRepo.js";
 
 export {
-  createSetRequest,
-  attachRequestMessage,
-  getSetRequestByMessage,
-  setRequestStatus,
-  deleteSetRequestsByUser,
-} from "./db/setRequestsRepo.js";
+  getGuildConfigRow,
+  upsertGuildConfig,
+} from "./db/guildConfigRepo.js";

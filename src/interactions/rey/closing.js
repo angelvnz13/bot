@@ -13,14 +13,14 @@ async function cerrar(interaction, panelId, { cancelado }) {
   const state = reyes.get(panelId);
   if (!state) return interaction.reply({ content: "⚠️ Este evento ya no está activo.", ephemeral: true });
 
-  if (interaction.user.id !== state.ownerId && !isAdmin(interaction.member)) {
+  if (interaction.user.id !== state.ownerId && !(await isAdmin(interaction.member))) {
     return interaction.reply({
       content: "🚫 Solo el creador del evento o un administrador puede cerrarlo.",
       ephemeral: true,
     });
   }
 
-  const cfg = getGuildConfig(state.guildId);
+  const cfg = await getGuildConfig(state.guildId);
   const log = interaction.client.channels.cache.get(cfg.logChannelId)
     ?? await interaction.client.channels.fetch(cfg.logChannelId).catch(() => null);
   if (log?.isTextBased?.()) {
@@ -47,7 +47,7 @@ async function cerrar(interaction, panelId, { cancelado }) {
 
   if (!cancelado) {
     const participantes = [state.ownerId, ...state.leones.map((l) => l.userId)];
-    logEvent({
+    await logEvent({
       guildId: state.guildId,
       userIds: participantes,
       eventType: "rey",
