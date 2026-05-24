@@ -5,9 +5,20 @@
 import Database from "better-sqlite3";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.resolve(__dirname, "..", "..", "data.db");
+
+// Permite sobreescribir la ruta de la DB con la variable DB_PATH (útil en
+// Railway/Render con volúmenes persistentes). Si no se define, usa data.db
+// en la raíz del proyecto.
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.resolve(__dirname, "..", "..", "data.db");
+
+// Si la ruta apunta a un volumen montado, asegúrate de que el directorio
+// existe antes de abrir la DB.
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");

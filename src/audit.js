@@ -10,7 +10,14 @@ import crypto from "node:crypto";
 import { logger } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const AUDIT_PATH = path.resolve(__dirname, "..", "audit.log");
+const AUDIT_PATH = process.env.AUDIT_PATH
+  ? path.resolve(process.env.AUDIT_PATH)
+  : path.resolve(__dirname, "..", "audit.log");
+
+// Asegura que el directorio existe (útil cuando AUDIT_PATH apunta a un volumen)
+try {
+  fs.mkdirSync(path.dirname(AUDIT_PATH), { recursive: true });
+} catch {}
 
 function getKey() {
   const hex = process.env.AUDIT_KEY;
