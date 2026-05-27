@@ -69,15 +69,9 @@ function rangoSemanaActual() {
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
-function esMiembro(guild, userId) {
-  return guild.members.cache.has(userId);
-}
-
-function listaLineas(rows, guild) {
-  // Filtrar usuarios que ya no están en el servidor
-  const activos = guild ? rows.filter((r) => esMiembro(guild, r.user_id)) : rows;
-  if (!activos.length) return "_sin datos aún_";
-  return activos.map((r, idx) => {
+function listaLineas(rows) {
+  if (!rows.length) return "_sin datos aún_";
+  return rows.map((r, idx) => {
     const medal = MEDALS[idx] ?? `**${idx + 1}.**`;
     const desglose = [
       r.asalto > 0 ? `🏰 ${r.asalto}` : null,
@@ -104,12 +98,12 @@ function tituloVista(view) {
   }
 }
 
-export function buildRankingEmbed(guildId, view = "total", guild = null) {
+export function buildRankingEmbed(guildId, view = "total") {
   const rows = rowsForView(guildId, view);
   return new EmbedBuilder()
     .setTitle("🏆 Ranking de eventos")
     .setColor(0xf1c40f)
-    .setDescription(`**${tituloVista(view)}**\n\n${listaLineas(rows, guild)}`);
+    .setDescription(`**${tituloVista(view)}**\n\n${listaLineas(rows)}`);
 }
 
 function rowBotones(view) {
@@ -143,7 +137,7 @@ export async function replyRanking(interaction) {
 
   try {
     await interaction.reply({
-      embeds: [buildRankingEmbed(guildId, "total", interaction.guild)],
+      embeds: [buildRankingEmbed(guildId, "total")],
       components: [rowBotones("total")],
       allowedMentions: { parse: [] },
     });
@@ -186,7 +180,7 @@ export async function handleRankingViewButton(interaction, view) {
     }
 
     await interaction.update({
-      embeds: [buildRankingEmbed(guildId, view, interaction.guild)],
+      embeds: [buildRankingEmbed(guildId, view)],
       components: [rowBotones(view)],
       allowedMentions: { parse: [] },
     });
@@ -208,9 +202,6 @@ async function refreshAllPanels(guildId) {
   const panels = listRankingPanels(guildId);
   if (!panels.length) return;
 
-  const guild = clientRef.guilds.cache.get(guildId)
-    ?? await clientRef.guilds.fetch(guildId).catch(() => null);
-
   for (const p of panels) {
     try {
       const channel = clientRef.channels.cache.get(p.channel_id)
@@ -225,7 +216,7 @@ async function refreshAllPanels(guildId) {
         continue;
       }
       await msg.edit({
-        embeds: [buildRankingEmbed(p.guild_id, p.view || "total", guild)],
+        embeds: [buildRankingEmbed(p.guild_id, p.view || "total")],
         components: [rowBotones(p.view || "total")],
         allowedMentions: { parse: [] },
       });
