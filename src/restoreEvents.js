@@ -1,6 +1,6 @@
 // Reconstruir event_log contando menciones del canal de registro.
+// Si el canal específico no es accesible, escanea todos los canales de texto.
 // Cada <@id> en cada mensaje = 1 evento para ese usuario.
-// Sin parsear resultados — simplemente contar quién aparece.
 
 import db from "./db/index.js";
 import { logEvent } from "./db.js";
@@ -18,9 +18,40 @@ function extractMentions(content) {
   return [...new Set(ids)];
 }
 
+// Escanear un solo canal y contar menciones
+async function scanChannel(channel, guildId) {
+  let total = 0;
+  let lastId = null;
+
+  while (true) {
+    const options = { limit: 100 };
+    if (lastId) options.before = lastId;
+
+    const messages = await channel.messages.fetch(options).catch(() => null);
+    if (!messages || messages.size === 0) break;
+
+    for (const [, msg] of messages) {
+      const userIds = extractMentions(msg.content);
+      if (userIds.length === 0) continue;
+
+      logEvent({
+        guildId,
+        userIds,
+        eventType: "asalto",
+        createdAt: msg.createdTimestamp,
+      });
+      total++;
+    }
+
+    lastId = messages.last()?.id;
+  }
+
+  return total;
+}
+
 /**
  * Reconstruir event_log desde el canal de registro.
- * Cada mención en cada mensaje = 1 evento para ese usuario.
+ * Si el canal no es accesible, escanea todos los canales de texto.
  */
 export async function restoreEventsFromChannel(client) {
   const guilds = client.guilds.cache;
@@ -28,48 +59,39 @@ export async function restoreEventsFromChannel(client) {
   for (const [, guild] of guilds) {
     const guildId = guild.id;
 
-    const channel = guild.channels.cache.get(ASALTO_REGISTRO_CHANNEL)
-      ?? await guild.channels.fetch(ASALTO_REGISTRO_CHANNEL).catch(() => null);
-
-    if (!channel?.isTextBased?.()) {
-      logger.warn("restoreEvents.channelNotFound", { channelId: ASALTO_REGISTRO_CHANNEL });
-      continue;
-    }
-
-    logger.info("restoreEvents.start", { guildId, channel: channel.name });
+    logger.info("restoreEvents.start", { guildId });
 
     // Borrar entries anteriores
     const deleted = db.prepare("DELETE FROM event_log WHERE guild_id = ?")
       .run(String(guildId)).changes;
 
+    // Intentar el canal específico primero
+    let channel = guild.channels.cache.get(ASALTO_REGISTRO_CHANNEL)
+      ?? await guild.channels.fetch(ASALTO_REGISTRO_CHANNEL).catch(() => null);
+
     let total = 0;
 
-    // Fetch en lotes de 100 hasta leer todos los mensajes
-    let lastId = null;
+    if (channel?.isTextBased?.()) {
+      // Canal específico accesible
+      total = await scanChannel(channel, guildId);
+      logger.info("restoreEvents.specificChannel", { channel: channel.name, messages: total });
+    } else {
+      // Fallback: escanear todos los canales de texto
+      logger.info("restoreEvents.fallback", { msg: "canal especifico no accesible, escaneando todos" });
 
-    while (true) {
-      const options = { limit: 100 };
-      if (lastId) options.before = lastId;
+      const channels = guild.channels.cache.filter(
+        (ch) => ch.isTextBased?.() && !ch.isThread(),
+      );
 
-      const messages = await channel.messages.fetch(options).catch(() => null);
-      if (!messages || messages.size === 0) break;
-
-      for (const [, msg] of messages) {
-        const userIds = extractMentions(msg.content);
-        if (userIds.length === 0) continue;
-
-        logEvent({
-          guildId,
-          userIds,
-          eventType: "asalto",
-          createdAt: msg.createdTimestamp,
-        });
-        total++;
+      for (const [, ch] of channels) {
+        const n = await scanChannel(ch, guildId);
+        if (n > 0) {
+          logger.info("restoreEvents.channel", { channel: ch.name, messages: n });
+        }
+        total += n;
       }
-
-      lastId = messages.last()?.id;
     }
 
-    logger.info("restoreEvents.done", { guildId, deletedOld: deleted, messagesProcessed: total });
+    logger.info("restoreEvents.done", { guildId, deletedOld: deleted, totalMessages: total });
   }
 }
