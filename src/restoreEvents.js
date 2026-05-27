@@ -1,13 +1,11 @@
-// Reconstruir event_log escaneando el canal de registro al arrancar.
-// Railway borra data.db en cada reinicio. Esta función lee los mensajes
-// del canal de registro y re-inserta los eventos en event_log.
+// Reconstruir event_log contando menciones del canal de registro.
+// Cada <@id> en cada mensaje = 1 evento para ese usuario.
+// Sin parsear resultados — simplemente contar quién aparece.
 
 import db from "./db/index.js";
 import { logEvent } from "./db.js";
 import { ASALTO_REGISTRO_CHANNEL } from "./config.js";
 import { logger } from "./logger.js";
-
-// ── Parser ──────────────────────────────────────────────────────────────
 
 // Extraer IDs de menciones <@id> o <@!id>
 function extractMentions(content) {
@@ -20,32 +18,9 @@ function extractMentions(content) {
   return [...new Set(ids)];
 }
 
-// Detectar resultado tipo "2-0", "2 - 1", "0-2", "BANZAS2-0" (1-2 dígitos)
-// Usa lookbehind/lookahead para NO confundir con IDs de Discord (5-6 dígitos).
-function hasScore(content) {
-  return /(?<!\d)\d{1,2}\s*-\s*\d{1,2}(?!\d)/.test(content);
-}
-
-// Detectar si el mensaje es un registro de asalto válido.
-function isRegistrationMessage(content) {
-  if (!hasScore(content)) return false;
-  if (extractMentions(content).length === 0) return false;
-
-  // Excluir mensajes que son notas, no resultados
-  const lower = content.toLowerCase().trim();
-  if (lower.startsWith("falta "))        return false;
-  if (lower.startsWith("participantes:")) return false;
-  if (lower.startsWith("imagen"))         return false;
-
-  return true;
-}
-
-// ── Scanner ─────────────────────────────────────────────────────────────
-
 /**
  * Reconstruir event_log desde el canal de registro.
- * Borra los entries existentes del guild y re-inserta desde los mensajes.
- * Idempotente: puede ejecutarse en cada reinicio sin peligro.
+ * Cada mención en cada mensaje = 1 evento para ese usuario.
  */
 export async function restoreEventsFromChannel(client) {
   const guilds = client.guilds.cache;
@@ -63,14 +38,13 @@ export async function restoreEventsFromChannel(client) {
 
     logger.info("restoreEvents.start", { guildId, channel: channel.name });
 
-    // Borrar entries anteriores (el canal es la fuente de verdad)
+    // Borrar entries anteriores
     const deleted = db.prepare("DELETE FROM event_log WHERE guild_id = ?")
       .run(String(guildId)).changes;
 
-    let parsed = 0;
-    let skipped = 0;
+    let total = 0;
 
-    // Fetch en lotes de 100 (Discord limita a 100 por request)
+    // Fetch en lotes de 100
     let lastId = null;
     const MAX_BATCHES = 10; // máx 1000 mensajes
 
@@ -82,36 +56,23 @@ export async function restoreEventsFromChannel(client) {
       if (!messages || messages.size === 0) break;
 
       for (const [, msg] of messages) {
-        if (!isRegistrationMessage(msg.content)) {
-          skipped++;
-          continue;
-        }
-
+        if (msg.author.bot) continue; // ignorar mensajes del bot
         const userIds = extractMentions(msg.content);
-        if (userIds.length === 0) {
-          skipped++;
-          continue;
-        }
+        if (userIds.length === 0) continue;
 
-        // Usar el timestamp del mensaje para preservar fechas reales
         logEvent({
           guildId,
           userIds,
           eventType: "asalto",
           createdAt: msg.createdTimestamp,
         });
-        parsed++;
+        total++;
       }
 
       lastId = messages.last()?.id;
       if (messages.size < 100) break;
     }
 
-    logger.info("restoreEvents.done", {
-      guildId,
-      deletedOld: deleted,
-      parsed,
-      skipped,
-    });
+    logger.info("restoreEvents.done", { guildId, deletedOld: deleted, messagesProcessed: total });
   }
 }
