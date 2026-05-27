@@ -18,10 +18,10 @@ import { restoreEventsFromChannel } from "./restoreEvents.js";
 
 import { logger } from "./logger.js";
 import { audit } from "./audit.js";
-import { loadActiveAsaltos } from "./db.js";
+import { loadActiveAsaltos, logEvent } from "./db.js";
 import { rehydrate } from "./state.js";
 import { inc } from "./metrics.js";
-import { ASALTO_CATEGORY_ID, ASALTO_LOG_CHANNEL } from "./config.js";
+import { ASALTO_CATEGORY_ID, ASALTO_LOG_CHANNEL, ASALTO_REGISTRO_CHANNEL } from "./config.js";
 import { setGuildConfig } from "./guildConfig.js";
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -43,6 +43,17 @@ const client = new Client({
   ],
   partials: [Partials.Channel],
 });
+
+// Extraer IDs de menciones <@id> o <@!id> de un mensaje
+function extractMentions(content) {
+  const ids = [];
+  const regex = /<@!?(\d+)>/g;
+  let m;
+  while ((m = regex.exec(content)) !== null) {
+    ids.push(m[1]);
+  }
+  return [...new Set(ids)];
+}
 
 const commands = [
   new SlashCommandBuilder().setName("evento").setDescription("Abrir el menú de eventos").toJSON(),
@@ -139,6 +150,26 @@ client.on("interactionCreate", (interaction) => {
 
 client.on("messageCreate", async (msg) => {
   if (!ready || msg.author.bot || !msg.guild) return;
+
+  // Listener en tiempo real para el canal de registro (1507568558132170912)
+  // Cada mensaje con menciones se agrega al ranking automáticamente
+  if (msg.channel.id === ASALTO_REGISTRO_CHANNEL) {
+    const userIds = extractMentions(msg.content);
+    if (userIds.length > 0) {
+      logEvent({
+        guildId: msg.guild.id,
+        userIds,
+        eventType: "asalto",
+        createdAt: msg.createdTimestamp,
+      });
+      logger.info("registro.realtime", {
+        channel: msg.channel.id,
+        mentions: userIds.length,
+        author: msg.author.id,
+      });
+    }
+  }
+
   if (msg.content === "!evento") {
     await sendMenuEventos(msg.channel).catch((e) => logger.warn("prefix.evento.failed", { err: e.message }));
   } else if (msg.content === "!sedes") {
