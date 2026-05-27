@@ -67,8 +67,13 @@ export function rowSelectorPrivado(panelId, leon, action) {
       opt.emoji = statusEmoji(s.status);
     } else {
       const e = parseEmoji(s.sede.emoji);
-      if (e) opt.emoji = e;
-      else   opt.emoji = "⏳";
+      // Discord rechaza algunos símbolos unicode bajos en SelectOption.emoji.
+      // Solo usamos custom (objeto) o unicode con codepoint >= U+2700.
+      if (e && (typeof e === "object" || e.codePointAt(0) >= 0x2700)) {
+        opt.emoji = e;
+      } else {
+        opt.emoji = "⏳";
+      }
     }
     return opt;
   });

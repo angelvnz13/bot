@@ -14,7 +14,8 @@ const VALID_UNICODE_EMOJI_RE =
 /**
  * Convierte el string del campo `emoji` a la forma que esperan
  * SelectOption.emoji / ButtonBuilder.setEmoji:
- * - Unicode válido → string del emoji
+ * - Unicode válido → string del emoji (sin variation selector U+FE0F final,
+ *   que Discord rechaza en components aunque sea válido en mensajes)
  * - Custom de Discord (<:nombre:id> o <a:nombre:id>) → { id, name, animated }
  * - Vacío o no válido → null
  */
@@ -24,7 +25,10 @@ export function parseEmoji(value) {
   if (!v) return null;
   const m = v.match(CUSTOM_RE);
   if (m) return { animated: m[1] === "a", name: m[2], id: m[3] };
-  return VALID_UNICODE_EMOJI_RE.test(v) ? v : null;
+
+  // Strip variation selector-16 final. Discord lo rechaza en components.
+  const cleaned = v.replace(/\uFE0F+$/u, "");
+  return VALID_UNICODE_EMOJI_RE.test(cleaned) ? cleaned : null;
 }
 
 /** Forma "emoji + texto" para títulos/descripciones (no se valida porque Markdown sí lo renderiza). */

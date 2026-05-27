@@ -34,7 +34,17 @@ function sedeOptions(excludeId = null) {
     const opt = { label: s.name.slice(0, 100), value: String(s.id) };
     if (s.coords) opt.description = s.coords.slice(0, 100);
     const e = parseEmoji(s.emoji);
-    if (e) opt.emoji = e;
+    // Discord rechaza algunos símbolos Unicode "bajos" (⚪ ⚫ ★ ☆ ♛ etc.) en
+    // SelectOption.emoji, aunque tengan Extended_Pictographic. Los emojis
+    // custom (objeto con id) siempre se aceptan; los unicode los limitamos
+    // a codepoints >= U+2700 que son los que Discord acepta de forma fiable.
+    if (e) {
+      if (typeof e === "object") {
+        opt.emoji = e;
+      } else if (e.codePointAt(0) >= 0x2700) {
+        opt.emoji = e;
+      }
+    }
     return opt;
   });
 }
