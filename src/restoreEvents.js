@@ -44,11 +44,10 @@ export async function restoreEventsFromChannel(client) {
 
     let total = 0;
 
-    // Fetch en lotes de 100
+    // Fetch en lotes de 100 hasta leer todos los mensajes
     let lastId = null;
-    const MAX_BATCHES = 10; // máx 1000 mensajes
 
-    for (let batch = 0; batch < MAX_BATCHES; batch++) {
+    while (true) {
       const options = { limit: 100 };
       if (lastId) options.before = lastId;
 
@@ -56,7 +55,7 @@ export async function restoreEventsFromChannel(client) {
       if (!messages || messages.size === 0) break;
 
       for (const [, msg] of messages) {
-        if (msg.author.bot) continue; // ignorar mensajes del bot
+        if (msg.author.bot) continue;
         const userIds = extractMentions(msg.content);
         if (userIds.length === 0) continue;
 
@@ -70,7 +69,6 @@ export async function restoreEventsFromChannel(client) {
       }
 
       lastId = messages.last()?.id;
-      if (messages.size < 100) break;
     }
 
     logger.info("restoreEvents.done", { guildId, deletedOld: deleted, messagesProcessed: total });
