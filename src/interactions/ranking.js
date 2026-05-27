@@ -82,11 +82,57 @@ function listaLineas(rows) {
   }).join("\n\n");
 }
 
-function rowsForView(guildId, view) {
+async function rowsForView(guildId, view) {
+  let rows;
   switch (view) {
-    case "weekly":  return getRankingSince(guildId, startOfWeekMs(), 10);
-    case "monthly": return getRankingSince(guildId, startOfMonthMs(), 10);
-    default:        return getRanking(guildId, 10);
+    case "weekly":  rows = getRankingSince(guildId, startOfWeekMs(), 50); break;
+    case "monthly": rows = getRankingSince(guildId, startOfMonthMs(), 50); break;
+    default:        rows = getRanking(guildId, 50);
+  }
+  
+  // Filtrar usuarios por roles permitidos
+  const allowedRoles = [
+    "1507169423386214561",
+    "1504318468185526343",
+    "1507777579405410425",
+    "1504315840252739634",
+    "1504661090896842793"
+  ];
+  
+  const filtered = await filterUsersByRoles(guildId, rows, allowedRoles);
+  return filtered.slice(0, 10);
+}
+
+async function filterUsersByRoles(guildId, rows, allowedRoles) {
+  if (!clientRef) return rows;
+  
+  try {
+    const guild = clientRef.guilds.cache.get(guildId);
+    if (!guild) return rows;
+    
+    const filtered = [];
+    for (const row of rows) {
+      try {
+        const member = await guild.members.fetch(row.user_id).catch(() => null);
+        if (!member) continue;
+        
+        // Verificar si el miembro tiene alguno de los roles permitidos
+        const hasAllowedRole = member.roles.cache.some(role => 
+          allowedRoles.includes(role.id)
+        );
+        
+        if (hasAllowedRole) {
+          filtered.push(row);
+        }
+      } catch (err) {
+        logger.warn("ranking.filterRoles.memberFetch", { userId: row.user_id, err: err.message });
+      }
+    }
+    
+    return filtered;
+  } catch (err) {
+    logger.error("ranking.filterRoles.failed", { err: err.message });
+    return rows;
   }
 }
 
@@ -98,8 +144,8 @@ function tituloVista(view) {
   }
 }
 
-export function buildRankingEmbed(guildId, view = "total") {
-  const rows = rowsForView(guildId, view);
+export async function buildRankingEmbed(guildId, view = "total") {
+  const rows = await rowsForView(guildId, view);
   return new EmbedBuilder()
     .setTitle("🏆 Ranking de eventos")
     .setColor(0xf1c40f)
@@ -136,8 +182,9 @@ export async function replyRanking(interaction) {
   }
 
   try {
+    const embed = await buildRankingEmbed(guildId, "total");
     await interaction.reply({
-      embeds: [buildRankingEmbed(guildId, "total")],
+      embeds: [embed],
       components: [rowBotones("total")],
       allowedMentions: { parse: [] },
     });
@@ -179,8 +226,9 @@ export async function handleRankingViewButton(interaction, view) {
       setRankingPanelView({ channelId, messageId, view });
     }
 
+    const embed = await buildRankingEmbed(guildId, view);
     await interaction.update({
-      embeds: [buildRankingEmbed(guildId, view)],
+      embeds: [embed],
       components: [rowBotones(view)],
       allowedMentions: { parse: [] },
     });
@@ -215,8 +263,9 @@ async function refreshAllPanels(guildId) {
         unregisterRankingPanel({ channelId: p.channel_id, messageId: p.message_id });
         continue;
       }
+      const embed = await buildRankingEmbed(p.guild_id, p.view || "total");
       await msg.edit({
-        embeds: [buildRankingEmbed(p.guild_id, p.view || "total")],
+        embeds: [embed],
         components: [rowBotones(p.view || "total")],
         allowedMentions: { parse: [] },
       });
