@@ -20,7 +20,7 @@ function extractMentions(content) {
 }
 
 // Escanear un solo canal y contar menciones
-async function scanChannel(channel, guildId, cache = null) {
+async function scanChannel(channel, guildId, cache = null, processedIds = null) {
   let total = 0;
   let lastId = null;
 
@@ -51,6 +51,11 @@ async function scanChannel(channel, guildId, cache = null) {
         });
       }
 
+      // Marcar como procesado para que el listener en tiempo real no lo duplique
+      if (processedIds) {
+        processedIds.add(msg.id);
+      }
+
       total++;
     }
 
@@ -64,7 +69,7 @@ async function scanChannel(channel, guildId, cache = null) {
  * Reconstruir event_log desde el canal de registro.
  * Si el canal no es accesible, escanea todos los canales de texto.
  */
-export async function restoreEventsFromChannel(client, cache = null) {
+export async function restoreEventsFromChannel(client, cache = null, processedIds = null) {
   const guilds = client.guilds.cache;
 
   for (const [, guild] of guilds) {
@@ -84,7 +89,7 @@ export async function restoreEventsFromChannel(client, cache = null) {
 
     if (channel?.isTextBased?.()) {
       // Canal específico accesible
-      total = await scanChannel(channel, guildId, cache);
+      total = await scanChannel(channel, guildId, cache, processedIds);
       logger.info("restoreEvents.specificChannel", { channel: channel.name, messages: total });
     } else {
       // Fallback: escanear todos los canales de texto
@@ -95,7 +100,7 @@ export async function restoreEventsFromChannel(client, cache = null) {
       );
 
       for (const [, ch] of channels) {
-        const n = await scanChannel(ch, guildId, cache);
+        const n = await scanChannel(ch, guildId, cache, processedIds);
         if (n > 0) {
           logger.info("restoreEvents.channel", { channel: ch.name, messages: n });
         }

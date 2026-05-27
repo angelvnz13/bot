@@ -22,6 +22,7 @@ import { logger } from "../logger.js";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 let clientRef = null;
+const recentlyUpdated = new Map(); // messageId → timestamp del último update por botón
 
 export function attachRankingClient(client) {
   clientRef = client;
@@ -232,6 +233,9 @@ export async function handleRankingViewButton(interaction, view) {
       components: [rowBotones(view)],
       allowedMentions: { parse: [] },
     });
+
+    // Marcar como recién actualizado para que refreshAllPanels no lo sobreescriba
+    recentlyUpdated.set(messageId, Date.now());
   } catch (err) {
     logger.error("ranking.viewButton.failed", { err: err.message });
     if (!interaction.replied && !interaction.deferred) {
@@ -252,6 +256,10 @@ async function refreshAllPanels(guildId) {
 
   for (const p of panels) {
     try {
+      // Saltar paneles recién actualizados por botón (3 segundos de gracia)
+      const lastUpdate = recentlyUpdated.get(p.message_id);
+      if (lastUpdate && Date.now() - lastUpdate < 3000) continue;
+
       const channel = clientRef.channels.cache.get(p.channel_id)
         ?? await clientRef.channels.fetch(p.channel_id).catch(() => null);
       if (!channel?.isTextBased?.()) {

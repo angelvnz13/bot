@@ -59,6 +59,7 @@ function extractMentions(content) {
 // Caché de mensajes del canal de registro (para saber qué borrar al hacer delete)
 const registroCache = new Map(); // messageId → { content, timestamp, guildId }
 const CACHE_MAX = 2000;
+const processedMsgIds = new Set(); // IDs ya procesados por el restore (evita duplicar)
 
 const commands = [
   new SlashCommandBuilder().setName("evento").setDescription("Abrir el menú de eventos").toJSON(),
@@ -107,7 +108,7 @@ client.once(READY_EVENT, async () => {
 
   // Reconstruir event_log desde el canal de registro (sobrevive reinicios)
   try {
-    await restoreEventsFromChannel(client, registroCache);
+    await restoreEventsFromChannel(client, registroCache, processedMsgIds);
   } catch (e) {
     logger.warn("restoreEvents.failed", { err: e.message });
   }
@@ -170,19 +171,24 @@ client.on("messageCreate", async (msg) => {
       guildId: msg.guild.id,
     });
 
-    const userIds = extractMentions(msg.content);
-    if (userIds.length > 0) {
-      logEvent({
-        guildId: msg.guild.id,
-        userIds,
-        eventType: "asalto",
-        createdAt: msg.createdTimestamp,
-      });
-      logger.info("registro.realtime", {
-        channel: msg.channel.id,
-        mentions: userIds.length,
-        author: msg.author.id,
-      });
+    // Si el mensaje ya fue procesado por el restore, no duplicar
+    if (processedMsgIds.has(msg.id)) {
+      processedMsgIds.delete(msg.id); // limpiar para no acumular memoria
+    } else {
+      const userIds = extractMentions(msg.content);
+      if (userIds.length > 0) {
+        logEvent({
+          guildId: msg.guild.id,
+          userIds,
+          eventType: "asalto",
+          createdAt: msg.createdTimestamp,
+        });
+        logger.info("registro.realtime", {
+          channel: msg.channel.id,
+          mentions: userIds.length,
+          author: msg.author.id,
+        });
+      }
     }
   }
 
