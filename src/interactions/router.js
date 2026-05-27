@@ -156,8 +156,6 @@ async function routeInteraction(interaction) {
     if (id.startsWith("set:reject:")) {
       return setMod.btnReject(interaction, id.split(":")[2]);
     }
-    if (id.startsWith("set:approve:")) return setMod.btnApprove(interaction, id.split(":")[2]);
-    if (id.startsWith("set:reject:"))  return setMod.btnReject(interaction);
 
     if (id.startsWith("sedes:")) {
       const action = id.split(":")[1];

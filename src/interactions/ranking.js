@@ -135,11 +135,16 @@ export async function replyRanking(interaction) {
     return interaction.reply({ content: "❌ Solo funciona en un servidor.", flags: 64 });
   }
 
-  await interaction.reply({
-    embeds: [buildRankingEmbed(guildId, "total")],
-    components: [rowBotones("total")],
-    allowedMentions: { parse: [] },
-  });
+  try {
+    await interaction.reply({
+      embeds: [buildRankingEmbed(guildId, "total")],
+      components: [rowBotones("total")],
+      allowedMentions: { parse: [] },
+    });
+  } catch (err) {
+    logger.error("ranking.reply.failed", { err: err.message });
+    return;
+  }
 
   try {
     const msg = await interaction.fetchReply();
@@ -165,19 +170,28 @@ export async function handleRankingViewButton(interaction, view) {
     return interaction.reply({ content: "❌ No se puede actualizar este panel.", flags: 64 });
   }
 
-  // Si por alguna razón el panel no estaba registrado (mensaje antiguo), lo registramos ahora.
-  const existing = getRankingPanel({ channelId, messageId });
-  if (!existing) {
-    registerRankingPanel({ channelId, messageId, guildId, view });
-  } else {
-    setRankingPanelView({ channelId, messageId, view });
-  }
+  try {
+    // Si por alguna razón el panel no estaba registrado (mensaje antiguo), lo registramos ahora.
+    const existing = getRankingPanel({ channelId, messageId });
+    if (!existing) {
+      registerRankingPanel({ channelId, messageId, guildId, view });
+    } else {
+      setRankingPanelView({ channelId, messageId, view });
+    }
 
-  await interaction.update({
-    embeds: [buildRankingEmbed(guildId, view)],
-    components: [rowBotones(view)],
-    allowedMentions: { parse: [] },
-  });
+    await interaction.update({
+      embeds: [buildRankingEmbed(guildId, view)],
+      components: [rowBotones(view)],
+      allowedMentions: { parse: [] },
+    });
+  } catch (err) {
+    logger.error("ranking.viewButton.failed", { err: err.message });
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction
+        .reply({ content: "❌ Error al actualizar el ranking.", flags: 64 })
+        .catch(() => {});
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
