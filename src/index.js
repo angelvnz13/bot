@@ -18,7 +18,8 @@ import { restoreEventsFromChannel } from "./restoreEvents.js";
 
 import { logger } from "./logger.js";
 import { audit } from "./audit.js";
-import { loadActiveAsaltos, logEvent } from "./db.js";
+import { events } from "./events.js";
+import { loadActiveAsaltos, logEvent, deleteEventsForUserAt } from "./db.js";
 import { rehydrate } from "./state.js";
 import { inc } from "./metrics.js";
 import { ASALTO_CATEGORY_ID, ASALTO_LOG_CHANNEL, ASALTO_REGISTRO_CHANNEL } from "./config.js";
@@ -54,6 +55,10 @@ function extractMentions(content) {
   }
   return [...new Set(ids)];
 }
+
+// Caché de mensajes del canal de registro (para saber qué borrar al hacer delete)
+const registroCache = new Map(); // messageId → { content, timestamp, guildId }
+const CACHE_MAX = 2000;
 
 const commands = [
   new SlashCommandBuilder().setName("evento").setDescription("Abrir el menú de eventos").toJSON(),
@@ -102,7 +107,7 @@ client.once(READY_EVENT, async () => {
 
   // Reconstruir event_log desde el canal de registro (sobrevive reinicios)
   try {
-    await restoreEventsFromChannel(client);
+    await restoreEventsFromChannel(client, registroCache);
   } catch (e) {
     logger.warn("restoreEvents.failed", { err: e.message });
   }
@@ -154,6 +159,17 @@ client.on("messageCreate", async (msg) => {
   // Listener en tiempo real para el canal de registro (1507568558132170912)
   // Cada mensaje con menciones se agrega al ranking automáticamente
   if (msg.channel.id === ASALTO_REGISTRO_CHANNEL) {
+    // Cachear el mensaje para poder borrar sus eventos si se elimina
+    if (registroCache.size >= CACHE_MAX) {
+      const firstKey = registroCache.keys().next().value;
+      registroCache.delete(firstKey);
+    }
+    registroCache.set(msg.id, {
+      content: msg.content,
+      timestamp: msg.createdTimestamp,
+      guildId: msg.guild.id,
+    });
+
     const userIds = extractMentions(msg.content);
     if (userIds.length > 0) {
       logEvent({
@@ -174,6 +190,39 @@ client.on("messageCreate", async (msg) => {
     await sendMenuEventos(msg.channel).catch((e) => logger.warn("prefix.evento.failed", { err: e.message }));
   } else if (msg.content === "!sedes") {
     await sendSedesAdmin(msg.channel).catch((e) => logger.warn("prefix.sedes.failed", { err: e.message }));
+  }
+});
+
+// Listener de borrado: si se borra un mensaje del canal de registro, borrar sus eventos del ranking
+client.on("messageDelete", (msg) => {
+  if (!ready || !msg.guild) return;
+  if (msg.channel.id !== ASALTO_REGISTRO_CHANNEL) return;
+
+  const cached = registroCache.get(msg.id);
+  registroCache.delete(msg.id);
+
+  if (!cached) {
+    logger.warn("registro.delete.noCache", { msgId: msg.id });
+    return;
+  }
+
+  const userIds = extractMentions(cached.content);
+  if (userIds.length === 0) return;
+
+  let totalDeleted = 0;
+  for (const uid of userIds) {
+    const n = deleteEventsForUserAt(cached.guildId, uid, cached.timestamp);
+    totalDeleted += n;
+  }
+
+  if (totalDeleted > 0) {
+    logger.info("registro.delete", {
+      msgId: msg.id,
+      users: userIds.length,
+      eventsRemoved: totalDeleted,
+    });
+    // Refrescar paneles de ranking
+    events.emit("event:logged", { guildId: cached.guildId });
   }
 });
 

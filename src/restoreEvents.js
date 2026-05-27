@@ -1,6 +1,7 @@
 // Reconstruir event_log contando menciones del canal de registro.
 // Si el canal específico no es accesible, escanea todos los canales de texto.
 // Cada <@id> en cada mensaje = 1 evento para ese usuario.
+// También llena un caché para poder borrar eventos si se elimina un mensaje.
 
 import db from "./db/index.js";
 import { logEvent } from "./db.js";
@@ -19,7 +20,7 @@ function extractMentions(content) {
 }
 
 // Escanear un solo canal y contar menciones
-async function scanChannel(channel, guildId) {
+async function scanChannel(channel, guildId, cache = null) {
   let total = 0;
   let lastId = null;
 
@@ -40,6 +41,16 @@ async function scanChannel(channel, guildId) {
         eventType: "asalto",
         createdAt: msg.createdTimestamp,
       });
+
+      // Llenar caché para poder borrar si se elimina el mensaje
+      if (cache && channel.id === ASALTO_REGISTRO_CHANNEL) {
+        cache.set(msg.id, {
+          content: msg.content,
+          timestamp: msg.createdTimestamp,
+          guildId,
+        });
+      }
+
       total++;
     }
 
@@ -53,7 +64,7 @@ async function scanChannel(channel, guildId) {
  * Reconstruir event_log desde el canal de registro.
  * Si el canal no es accesible, escanea todos los canales de texto.
  */
-export async function restoreEventsFromChannel(client) {
+export async function restoreEventsFromChannel(client, cache = null) {
   const guilds = client.guilds.cache;
 
   for (const [, guild] of guilds) {
@@ -73,7 +84,7 @@ export async function restoreEventsFromChannel(client) {
 
     if (channel?.isTextBased?.()) {
       // Canal específico accesible
-      total = await scanChannel(channel, guildId);
+      total = await scanChannel(channel, guildId, cache);
       logger.info("restoreEvents.specificChannel", { channel: channel.name, messages: total });
     } else {
       // Fallback: escanear todos los canales de texto
@@ -84,7 +95,7 @@ export async function restoreEventsFromChannel(client) {
       );
 
       for (const [, ch] of channels) {
-        const n = await scanChannel(ch, guildId);
+        const n = await scanChannel(ch, guildId, cache);
         if (n > 0) {
           logger.info("restoreEvents.channel", { channel: ch.name, messages: n });
         }

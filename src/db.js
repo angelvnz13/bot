@@ -37,6 +37,7 @@ export {
   getRankingSince,
   totalEventsForGuild,
   deleteEventsForUser,
+  deleteEventsForUserAt,
 } from "./db/eventLogRepo.js";
 
 export {

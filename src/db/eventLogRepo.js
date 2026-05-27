@@ -68,3 +68,17 @@ export function totalEventsForGuild(guildId) {
 export function deleteEventsForUser(userId) {
   return stmts.deleteByUser.run(String(userId)).changes;
 }
+
+// Borrar eventos de un usuario en un rango de tiempo (±60s del timestamp)
+export function deleteEventsForUserAt(guildId, userId, createdAt) {
+  return db.prepare(`
+    DELETE FROM event_log
+    WHERE guild_id = ? AND user_id = ? AND event_type = 'asalto'
+      AND created_at BETWEEN ? AND ?
+  `).run(
+    String(guildId),
+    String(userId),
+    createdAt - 60000,
+    createdAt + 60000,
+  ).changes;
+}
