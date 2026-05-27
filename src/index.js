@@ -14,6 +14,7 @@ import { sendSedesAdmin } from "./interactions/sedesAdmin.js";
 import { attachRankingClient } from "./interactions/ranking.js";
 import { seedDefaultsIfEmpty } from "./seedDefaults.js";
 import { discoverRankingPanels } from "./restoreRanking.js";
+import { restoreEventsFromChannel } from "./restoreEvents.js";
 
 import { logger } from "./logger.js";
 import { audit } from "./audit.js";
@@ -86,6 +87,13 @@ client.once(READY_EVENT, async () => {
     await discoverRankingPanels(client);
   } catch (e) {
     logger.warn("ranking.discovery.failed", { err: e.message });
+  }
+
+  // Reconstruir event_log desde el canal de registro (sobrevive reinicios)
+  try {
+    await restoreEventsFromChannel(client);
+  } catch (e) {
+    logger.warn("restoreEvents.failed", { err: e.message });
   }
 
   // Rehidratar asaltos activos persistidos

@@ -38,15 +38,15 @@ const stmts = {
   deleteByUser: db.prepare("DELETE FROM event_log WHERE user_id = ?"),
 };
 
-export function logEvent({ guildId, userIds, eventType }) {
+export function logEvent({ guildId, userIds, eventType, createdAt }) {
   if (!guildId || !eventType) return;
   const ids = Array.isArray(userIds) ? userIds : [userIds];
   const unique = [...new Set(ids.filter(Boolean).map(String))];
   if (!unique.length) return;
-  const now = Date.now();
+  const ts = createdAt ?? Date.now();
   const tx = db.transaction(() => {
     for (const uid of unique) {
-      stmts.insert.run(String(guildId), uid, String(eventType), now);
+      stmts.insert.run(String(guildId), uid, String(eventType), ts);
     }
   });
   tx();
