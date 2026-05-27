@@ -55,7 +55,6 @@ export async function restoreEventsFromChannel(client) {
       if (!messages || messages.size === 0) break;
 
       for (const [, msg] of messages) {
-        if (msg.author.bot) continue;
         const userIds = extractMentions(msg.content);
         if (userIds.length === 0) continue;
 
